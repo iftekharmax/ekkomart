@@ -1,0 +1,100 @@
+import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useMutation } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Upload, X } from "lucide-react";
+import { removeStoredImage } from "@/lib/storage-utils";
+
+export type BrandFormValues = { name: string; description: string; image_url: string };
+
+export function BrandForm({
+  initial, submitLabel, submitting, onSubmit,
+}: {
+  initial: BrandFormValues; submitLabel: string; submitting?: boolean;
+  onSubmit: (v: BrandFormValues) => void;
+}) {
+  const navigate = useNavigate();
+  const [form, setForm] = useState<BrandFormValues>(initial);
+  const [uploading, setUploading] = useState(false);
+
+  const uploadM = useMutation({
+    mutationFn: async (file: File) => {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `brands/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("product-media").upload(path, file, {
+        cacheControl: "3600", upsert: false, contentType: file.type,
+      });
+      if (error) throw error;
+      const { data, error: sErr } = await supabase.storage
+        .from("product-media").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+      if (sErr || !data) throw sErr ?? new Error("Could not sign URL");
+      return { url: data.signedUrl, previous: form.image_url };
+    },
+    onMutate: () => setUploading(true),
+    onSettled: () => setUploading(false),
+    onSuccess: async ({ url, previous }) => {
+      setForm((f) => ({ ...f, image_url: url }));
+      if (previous && previous !== url) await removeStoredImage(previous);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadM.mutate(file);
+  };
+
+  return (
+    <form
+      onSubmit={(e) => { e.preventDefault(); if (!form.name.trim()) return; onSubmit(form); }}
+      className="max-w-2xl rounded-2xl border bg-card p-6"
+    >
+      <div className="grid gap-4">
+        <div>
+          <Label>Name</Label>
+          <Input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Brand name" />
+        </div>
+        <div>
+          <Label>Description</Label>
+          <Textarea rows={4} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Optional description" />
+        </div>
+        <div>
+          <Label>Image</Label>
+          <div className="mt-1 flex items-center gap-3">
+            {form.image_url ? (
+              <div className="relative">
+                <img src={form.image_url} alt="preview" className="h-24 w-24 rounded object-cover" />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const prev = form.image_url;
+                    setForm({ ...form, image_url: "" });
+                    await removeStoredImage(prev);
+                  }}
+                  className="absolute -right-2 -top-2 rounded-full bg-background border p-1"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex h-24 w-24 cursor-pointer flex-col items-center justify-center rounded border-2 border-dashed text-xs text-muted-foreground hover:bg-muted">
+                <Upload className="mb-1 h-4 w-4" />
+                {uploading ? "Uploading…" : "Upload"}
+                <input type="file" accept="image/*" className="hidden" onChange={handleFile} disabled={uploading} />
+              </label>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="mt-6 flex gap-2">
+        <Button type="submit" disabled={submitting || uploading}>{submitLabel}</Button>
+        <Button type="button" variant="outline" onClick={() => navigate({ to: "/admin/brands" })}>Cancel</Button>
+      </div>
+    </form>
+  );
+}

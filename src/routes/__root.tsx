@@ -11,6 +11,8 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { MobileBottomNav } from "../components/mobile-bottom-nav";
+import { Toaster } from "sonner";
 
 function NotFoundComponent() {
   return (
@@ -77,14 +79,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Tokyohalal — Fresh groceries delivered in minutes" },
+      { name: "description", content: "Shop fresh produce, pantry staples, and daily essentials. Same-day delivery on orders over $30." },
+      { property: "og:title", content: "Tokyohalal — Fresh groceries delivered in minutes" },
+      { property: "og:description", content: "Shop fresh produce, pantry staples, and daily essentials. Same-day delivery on orders over $30." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Tokyohalal — Fresh groceries delivered in minutes" },
+      { name: "twitter:description", content: "Shop fresh produce, pantry staples, and daily essentials. Same-day delivery on orders over $30." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b812b40d-5441-4132-b4cc-19958710a22b/id-preview-a432bd8d--f59a5fd2-1758-42fe-9089-e51b3280a9e2.lovable.app-1783535789655.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b812b40d-5441-4132-b4cc-19958710a22b/id-preview-a432bd8d--f59a5fd2-1758-42fe-9089-e51b3280a9e2.lovable.app-1783535789655.png" },
     ],
     links: [
       {
@@ -116,11 +120,29 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const router = useRouter();
+
+  useEffect(() => {
+    // Lazy import so SSR doesn't touch the browser client.
+    import("../integrations/supabase/client").then(({ supabase }) => {
+      const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+        if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+        router.invalidate();
+        if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      });
+      return () => sub.subscription.unsubscribe();
+    });
+  }, [router, queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <div className="pb-16 md:pb-0">
+        <Outlet />
+      </div>
+      <MobileBottomNav />
+      <Toaster richColors position="top-center" closeButton />
     </QueryClientProvider>
   );
 }
+

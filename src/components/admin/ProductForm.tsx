@@ -200,23 +200,14 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
                 {(units as any[]).length === 0 && <option value={form.unit}>{form.unit}</option>}
               </select>
             </div>
-            <div><Label>Tag</Label><Input value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value })} /></div>
+            <div><Label>Tag</Label><Input value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value })} placeholder="e.g. New, Popular" /></div>
 
             {!isVar && (
               <>
                 <div><Label>Purchase price</Label><Input type="number" step="0.01" value={form.cost_price ?? ""} onChange={(e) => setForm({ ...form, cost_price: e.target.value ? Number(e.target.value) : null })} /></div>
                 <div><Label>Selling price</Label><Input required type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} /></div>
                 <div><Label>Old price</Label><Input type="number" step="0.01" value={form.old_price ?? ""} onChange={(e) => setForm({ ...form, old_price: e.target.value ? Number(e.target.value) : null })} /></div>
-                <div><Label>Tax %</Label><Input type="number" step="0.01" value={form.tax_percent ?? ""} onChange={(e) => setForm({ ...form, tax_percent: e.target.value ? Number(e.target.value) : null })} /></div>
                 <div><Label>Current stock</Label><Input type="number" value={form.stock ?? 0} onChange={(e) => setForm({ ...form, stock: e.target.value ? Number(e.target.value) : 0 })} /></div>
-                <div><Label>Low stock alert</Label><Input type="number" value={form.low_stock_alert ?? ""} onChange={(e) => setForm({ ...form, low_stock_alert: e.target.value ? Number(e.target.value) : null })} /></div>
-                <div>
-                  <Label>SKU</Label>
-                  <div className="flex gap-2">
-                    <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="auto-generate" />
-                    <Button type="button" variant="outline" onClick={() => setForm({ ...form, sku: `SKU-${randHex(8)}` })}><RefreshCw className="h-4 w-4" /></Button>
-                  </div>
-                </div>
                 <div>
                   <Label>Barcode (EAN-13)</Label>
                   <div className="flex gap-2">
@@ -229,12 +220,9 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
                 </div>
               </>
             )}
-            <div className="flex items-center gap-2 sm:col-span-2">
-              <Switch checked={form.in_stock} onCheckedChange={(v) => setForm({ ...form, in_stock: v })} />
-              <Label>In stock</Label>
-            </div>
           </div>
         </section>
+
 
         {isVar && (
           <section>

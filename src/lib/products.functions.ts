@@ -90,7 +90,7 @@ export const listAllVariations = createServerFn({ method: "GET" })
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await (supabaseAdmin.from("product_variations" as any) as any)
-      .select("id, product_id, name, stock").order("position");
+      .select("id, product_id, name, stock, barcode, sku").order("position");
     if (error) throw new Error(error.message);
     return data ?? [];
   });

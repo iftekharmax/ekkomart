@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+
 import { Badge } from "@/components/ui/badge";
 import { Plus, X, Upload, ScanLine, Camera, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -148,151 +148,153 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
         </div>
       </div>
 
-      <Tabs defaultValue="basics">
-        <TabsList className="mb-4 flex-wrap">
-          <TabsTrigger value="basics">Basics</TabsTrigger>
-          {!isVar && <TabsTrigger value="ids">Identifiers</TabsTrigger>}
-          {isVar && <TabsTrigger value="variations">Variations</TabsTrigger>}
-          <TabsTrigger value="media">Media</TabsTrigger>
-          <TabsTrigger value="content">Content</TabsTrigger>
-          <TabsTrigger value="logistics">Logistics</TabsTrigger>
-          <TabsTrigger value="seo">SEO</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="basics" className="grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Label>Product name</Label>
-            <Input required value={form.name} onChange={(e) => {
-              const name = e.target.value;
-              setForm({ ...form, name, slug: form.slug || slugify(name, { lower: true, strict: true }) });
-            }} />
-          </div>
-          <div className="sm:col-span-2"><Label>Slug</Label><Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="auto from name" /></div>
-          <div>
-            <Label>Category</Label>
-            <select required className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.category}
-              onChange={(e) => setForm({ ...form, category: e.target.value, subcategory: "" })}>
-              <option value="">Select category…</option>
-              {(categories as any[]).map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <Label>Subcategory</Label>
-            <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.subcategory}
-              onChange={(e) => setForm({ ...form, subcategory: e.target.value })} disabled={!selectedCat}>
-              <option value="">{selectedCat ? "Select…" : "Pick a category first"}</option>
-              {filteredSubs.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <Label>Brand</Label>
-            <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.brand}
-              onChange={(e) => setForm({ ...form, brand: e.target.value })}>
-              <option value="">—</option>
-              {(brands as any[]).map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <Label>Supplier</Label>
-            <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.supplier_id}
-              onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}>
-              <option value="">—</option>
-              {(suppliers as any[]).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <Label>Unit</Label>
-            <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.unit}
-              onChange={(e) => setForm({ ...form, unit: e.target.value })}>
-              {(units as any[]).map((u) => <option key={u.id} value={u.name}>{u.name}{u.symbol ? ` (${u.symbol})` : ""}</option>)}
-              {(units as any[]).length === 0 && <option value={form.unit}>{form.unit}</option>}
-            </select>
-          </div>
-          <div><Label>Tag</Label><Input value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value })} /></div>
-
-          {!isVar && (
-            <>
-              <div><Label>Cost price</Label><Input type="number" step="0.01" value={form.cost_price ?? ""} onChange={(e) => setForm({ ...form, cost_price: e.target.value ? Number(e.target.value) : null })} /></div>
-              <div><Label>Selling price</Label><Input required type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} /></div>
-              <div><Label>Old price</Label><Input type="number" step="0.01" value={form.old_price ?? ""} onChange={(e) => setForm({ ...form, old_price: e.target.value ? Number(e.target.value) : null })} /></div>
-              <div><Label>Tax %</Label><Input type="number" step="0.01" value={form.tax_percent ?? ""} onChange={(e) => setForm({ ...form, tax_percent: e.target.value ? Number(e.target.value) : null })} /></div>
-              <div><Label>Current stock</Label><Input type="number" value={form.stock ?? 0} onChange={(e) => setForm({ ...form, stock: e.target.value ? Number(e.target.value) : 0 })} /></div>
-              <div><Label>Low stock alert</Label><Input type="number" value={form.low_stock_alert ?? ""} onChange={(e) => setForm({ ...form, low_stock_alert: e.target.value ? Number(e.target.value) : null })} /></div>
-            </>
-          )}
-          <div className="flex items-center gap-2 sm:col-span-2">
-            <Switch checked={form.in_stock} onCheckedChange={(v) => setForm({ ...form, in_stock: v })} />
-            <Label>In stock</Label>
-          </div>
-        </TabsContent>
-
-        {!isVar && (
-          <TabsContent value="ids" className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label>SKU</Label>
-              <div className="flex gap-2">
-                <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="auto-generate" />
-                <Button type="button" variant="outline" onClick={() => setForm({ ...form, sku: `SKU-${randHex(8)}` })}><RefreshCw className="h-4 w-4" /></Button>
-              </div>
-            </div>
-            <div>
-              <Label>Barcode (EAN-13)</Label>
-              <div className="flex gap-2">
-                <Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} placeholder="Scan or auto-generate" />
-                <Button type="button" variant="outline" onClick={() => setForm({ ...form, barcode: ean13() })}><RefreshCw className="h-4 w-4" /></Button>
-              </div>
-            </div>
+      <div className="space-y-8">
+        <section>
+          <h3 className="mb-3 text-lg font-semibold">Basics</h3>
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <BarcodeScanner onScan={(code) => setForm({ ...form, barcode: code })} />
+              <Label>Product name</Label>
+              <Input required value={form.name} onChange={(e) => {
+                const name = e.target.value;
+                setForm({ ...form, name, slug: form.slug || slugify(name, { lower: true, strict: true }) });
+              }} />
             </div>
-          </TabsContent>
-        )}
+            <div className="sm:col-span-2"><Label>Slug</Label><Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="auto from name" /></div>
+            <div>
+              <Label>Category</Label>
+              <select required className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value, subcategory: "" })}>
+                <option value="">Select category…</option>
+                {(categories as any[]).map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Subcategory</Label>
+              <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.subcategory}
+                onChange={(e) => setForm({ ...form, subcategory: e.target.value })} disabled={!selectedCat}>
+                <option value="">{selectedCat ? "Select…" : "Pick a category first"}</option>
+                {filteredSubs.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Brand</Label>
+              <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.brand}
+                onChange={(e) => setForm({ ...form, brand: e.target.value })}>
+                <option value="">—</option>
+                {(brands as any[]).map((b) => <option key={b.id} value={b.name}>{b.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Supplier</Label>
+              <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.supplier_id}
+                onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}>
+                <option value="">—</option>
+                {(suppliers as any[]).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Unit</Label>
+              <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.unit}
+                onChange={(e) => setForm({ ...form, unit: e.target.value })}>
+                {(units as any[]).map((u) => <option key={u.id} value={u.name}>{u.name}{u.symbol ? ` (${u.symbol})` : ""}</option>)}
+                {(units as any[]).length === 0 && <option value={form.unit}>{form.unit}</option>}
+              </select>
+            </div>
+            <div><Label>Tag</Label><Input value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value })} /></div>
+
+            {!isVar && (
+              <>
+                <div><Label>Purchase price</Label><Input type="number" step="0.01" value={form.cost_price ?? ""} onChange={(e) => setForm({ ...form, cost_price: e.target.value ? Number(e.target.value) : null })} /></div>
+                <div><Label>Selling price</Label><Input required type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} /></div>
+                <div><Label>Old price</Label><Input type="number" step="0.01" value={form.old_price ?? ""} onChange={(e) => setForm({ ...form, old_price: e.target.value ? Number(e.target.value) : null })} /></div>
+                <div><Label>Tax %</Label><Input type="number" step="0.01" value={form.tax_percent ?? ""} onChange={(e) => setForm({ ...form, tax_percent: e.target.value ? Number(e.target.value) : null })} /></div>
+                <div><Label>Current stock</Label><Input type="number" value={form.stock ?? 0} onChange={(e) => setForm({ ...form, stock: e.target.value ? Number(e.target.value) : 0 })} /></div>
+                <div><Label>Low stock alert</Label><Input type="number" value={form.low_stock_alert ?? ""} onChange={(e) => setForm({ ...form, low_stock_alert: e.target.value ? Number(e.target.value) : null })} /></div>
+                <div>
+                  <Label>SKU</Label>
+                  <div className="flex gap-2">
+                    <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="auto-generate" />
+                    <Button type="button" variant="outline" onClick={() => setForm({ ...form, sku: `SKU-${randHex(8)}` })}><RefreshCw className="h-4 w-4" /></Button>
+                  </div>
+                </div>
+                <div>
+                  <Label>Barcode (EAN-13)</Label>
+                  <div className="flex gap-2">
+                    <Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} placeholder="Scan or auto-generate" />
+                    <Button type="button" variant="outline" onClick={() => setForm({ ...form, barcode: ean13() })}><RefreshCw className="h-4 w-4" /></Button>
+                  </div>
+                </div>
+                <div className="sm:col-span-2">
+                  <BarcodeScanner onScan={(code) => setForm({ ...form, barcode: code })} />
+                </div>
+              </>
+            )}
+            <div className="flex items-center gap-2 sm:col-span-2">
+              <Switch checked={form.in_stock} onCheckedChange={(v) => setForm({ ...form, in_stock: v })} />
+              <Label>In stock</Label>
+            </div>
+          </div>
+        </section>
 
         {isVar && (
-          <TabsContent value="variations" className="space-y-4">
+          <section>
+            <h3 className="mb-3 text-lg font-semibold">Variations</h3>
             <VariationsBuilder attributes={attributes as any[]} form={form} setForm={setForm} />
-          </TabsContent>
+          </section>
         )}
 
-        <TabsContent value="media" className="space-y-4">
+        <section>
+          <h3 className="mb-3 text-lg font-semibold">Product images</h3>
           <ImageUploader images={form.images} onChange={(images) => setForm({ ...form, images })} />
+        </section>
+
+        <section>
+          <h3 className="mb-3 text-lg font-semibold">Product video</h3>
           <VideoUploader url={form.video_url} onChange={(url) => setForm({ ...form, video_url: url })} />
-        </TabsContent>
+        </section>
 
-        <TabsContent value="content" className="space-y-4">
-          <div><Label>Description</Label><Textarea rows={5} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
-          <div>
-            <Label>Specifications</Label>
-            <div className="space-y-2">
-              {form.specifications.map((s, i) => (
-                <div key={i} className="flex gap-2">
-                  <Input placeholder="Key" value={s.key} onChange={(e) => { const specs = [...form.specifications]; specs[i] = { ...specs[i], key: e.target.value }; setForm({ ...form, specifications: specs }); }} />
-                  <Input placeholder="Value" value={s.value} onChange={(e) => { const specs = [...form.specifications]; specs[i] = { ...specs[i], value: e.target.value }; setForm({ ...form, specifications: specs }); }} />
-                  <Button type="button" variant="outline" size="icon" onClick={() => setForm({ ...form, specifications: form.specifications.filter((_, j) => j !== i) })}><X className="h-4 w-4" /></Button>
-                </div>
-              ))}
-              <Button type="button" variant="outline" onClick={() => setForm({ ...form, specifications: [...form.specifications, { key: "", value: "" }] })}><Plus className="mr-1 h-4 w-4" /> Add spec</Button>
+        <section>
+          <h3 className="mb-3 text-lg font-semibold">Description</h3>
+          <Textarea rows={5} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+        </section>
+
+        <section>
+          <h3 className="mb-3 text-lg font-semibold">Specifications</h3>
+          <div className="space-y-2">
+            {form.specifications.map((s, i) => (
+              <div key={i} className="flex gap-2">
+                <Input placeholder="Key" value={s.key} onChange={(e) => { const specs = [...form.specifications]; specs[i] = { ...specs[i], key: e.target.value }; setForm({ ...form, specifications: specs }); }} />
+                <Input placeholder="Value" value={s.value} onChange={(e) => { const specs = [...form.specifications]; specs[i] = { ...specs[i], value: e.target.value }; setForm({ ...form, specifications: specs }); }} />
+                <Button type="button" variant="outline" size="icon" onClick={() => setForm({ ...form, specifications: form.specifications.filter((_, j) => j !== i) })}><X className="h-4 w-4" /></Button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" onClick={() => setForm({ ...form, specifications: [...form.specifications, { key: "", value: "" }] })}><Plus className="mr-1 h-4 w-4" /> Add spec</Button>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="mb-3 text-lg font-semibold">Logistics</h3>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><Label>Weight</Label><Input type="number" step="0.01" value={form.weight_value ?? ""} onChange={(e) => setForm({ ...form, weight_value: e.target.value ? Number(e.target.value) : null })} /></div>
+            <div>
+              <Label>Weight unit</Label>
+              <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.weight_unit} onChange={(e) => setForm({ ...form, weight_unit: e.target.value })}>
+                <option value="g">g</option><option value="kg">kg</option><option value="lb">lb</option><option value="oz">oz</option>
+              </select>
             </div>
+            <div className="sm:col-span-2"><Label>Tags</Label><ChipInput values={form.tags} onChange={(tags) => setForm({ ...form, tags })} placeholder="Type a tag and press Enter" /></div>
           </div>
-        </TabsContent>
+        </section>
 
-        <TabsContent value="logistics" className="grid gap-3 sm:grid-cols-2">
-          <div><Label>Weight</Label><Input type="number" step="0.01" value={form.weight_value ?? ""} onChange={(e) => setForm({ ...form, weight_value: e.target.value ? Number(e.target.value) : null })} /></div>
-          <div>
-            <Label>Weight unit</Label>
-            <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.weight_unit} onChange={(e) => setForm({ ...form, weight_unit: e.target.value })}>
-              <option value="g">g</option><option value="kg">kg</option><option value="lb">lb</option><option value="oz">oz</option>
-            </select>
+        <section>
+          <h3 className="mb-3 text-lg font-semibold">SEO</h3>
+          <div className="space-y-3">
+            <div><Label>SEO title</Label><Input value={form.seo_title} onChange={(e) => setForm({ ...form, seo_title: e.target.value })} /></div>
+            <div><Label>SEO description</Label><Textarea rows={3} value={form.seo_description} onChange={(e) => setForm({ ...form, seo_description: e.target.value })} /></div>
+            <div><Label>SEO keywords</Label><ChipInput values={form.seo_keywords} onChange={(seo_keywords) => setForm({ ...form, seo_keywords })} placeholder="Add keyword and press Enter" /></div>
           </div>
-          <div className="sm:col-span-2"><Label>Tags</Label><ChipInput values={form.tags} onChange={(tags) => setForm({ ...form, tags })} placeholder="Type a tag and press Enter" /></div>
-        </TabsContent>
-
-        <TabsContent value="seo" className="space-y-3">
-          <div><Label>SEO title</Label><Input value={form.seo_title} onChange={(e) => setForm({ ...form, seo_title: e.target.value })} /></div>
-          <div><Label>SEO description</Label><Textarea rows={3} value={form.seo_description} onChange={(e) => setForm({ ...form, seo_description: e.target.value })} /></div>
-          <div><Label>SEO keywords</Label><ChipInput values={form.seo_keywords} onChange={(seo_keywords) => setForm({ ...form, seo_keywords })} placeholder="Add keyword and press Enter" /></div>
-        </TabsContent>
-      </Tabs>
+        </section>
+      </div>
 
       <div className="mt-6 flex gap-2">
         <Button type="submit" disabled={submitting}>{submitLabel}</Button>

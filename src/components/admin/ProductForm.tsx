@@ -137,13 +137,12 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
   const subsFn = useServerFn(listSubcategories);
   const brandsFn = useServerFn(listBrands);
   const unitsFn = useServerFn(listUnits);
-  const suppliersFn = useServerFn(listSuppliers);
   const attrsFn = useServerFn(listAttributes);
   const { data: categories = [] } = useQuery({ queryKey: ["admin-categories"], queryFn: () => catsFn() });
   const { data: subcategories = [] } = useQuery({ queryKey: ["admin-subcategories-all"], queryFn: () => subsFn({ data: {} } as any) });
   const { data: brands = [] } = useQuery({ queryKey: ["admin-brands"], queryFn: () => brandsFn() });
   const { data: units = [] } = useQuery({ queryKey: ["admin-units"], queryFn: () => unitsFn() });
-  const { data: suppliers = [] } = useQuery({ queryKey: ["admin-suppliers"], queryFn: () => suppliersFn() });
+
   const { data: attributes = [] } = useQuery({ queryKey: ["admin-attributes"], queryFn: () => attrsFn() });
 
   const selectedCat = (categories as any[]).find((c) => c.name === form.category || c.slug === form.category);

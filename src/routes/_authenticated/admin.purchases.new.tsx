@@ -47,6 +47,38 @@ function NewPurchasePage() {
   const barcodeRef = useRef<HTMLInputElement>(null);
   useEffect(() => { barcodeRef.current?.focus(); }, []);
 
+  const suggestions = (() => {
+    const q = barcode.trim().toLowerCase();
+    if (!q) return [] as Array<{ key: string; label: string; sub: string; add: () => void }>;
+    const out: Array<{ key: string; label: string; sub: string; add: () => void }> = [];
+    for (const v of variations as any[]) {
+      if (out.length >= 8) break;
+      const hay = `${v.name ?? ""} ${v.barcode ?? ""} ${v.sku ?? ""}`.toLowerCase();
+      if (!hay.includes(q)) continue;
+      const p = (products as any[]).find((x) => x.id === v.product_id);
+      if (!p) continue;
+      out.push({
+        key: `v-${v.id}`,
+        label: `${p.name} — ${v.name}`,
+        sub: `${v.barcode ?? v.sku ?? ""}`,
+        add: () => scanBarcode(v.barcode || v.sku || ""),
+      });
+    }
+    for (const p of products as any[]) {
+      if (out.length >= 8) break;
+      if (p.product_type === "variable") continue;
+      const hay = `${p.name ?? ""} ${p.barcode ?? ""} ${p.sku ?? ""}`.toLowerCase();
+      if (!hay.includes(q)) continue;
+      out.push({
+        key: `p-${p.id}`,
+        label: p.name,
+        sub: `${p.barcode ?? p.sku ?? ""}`,
+        add: () => scanBarcode(p.barcode || p.sku || ""),
+      });
+    }
+    return out;
+  })();
+
   const scanBarcode = (raw: string) => {
     const code = raw.trim();
     if (!code) return;

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { listProducts, deleteProduct } from "@/lib/products.functions";
+import { listProducts, deleteProduct, listAllVariations } from "@/lib/products.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pencil, Plus, Trash2 } from "lucide-react";
@@ -14,9 +14,16 @@ function ProductsListPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const listFn = useServerFn(listProducts);
+  const varsFn = useServerFn(listAllVariations);
   const deleteFn = useServerFn(deleteProduct);
   const [q, setQ] = useState("");
   const { data: products = [] } = useQuery({ queryKey: ["admin-products"], queryFn: () => listFn() });
+  const { data: variations = [] } = useQuery({ queryKey: ["admin-all-variations"], queryFn: () => varsFn() });
+  const stockByProduct = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const v of variations as any[]) m.set(v.product_id, (m.get(v.product_id) ?? 0) + Number(v.stock ?? 0));
+    return m;
+  }, [variations]);
   const deleteM = useMutation({
     mutationFn: (id: string) => deleteFn({ data: { id } }),
     onSuccess: () => { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["admin-products"] }); },
@@ -64,9 +71,14 @@ function ProductsListPage() {
                 <td className="px-4 py-3 text-muted-foreground">{p.category}{p.subcategory ? ` / ${p.subcategory}` : ""}</td>
                 <td className="px-4 py-3">${Number(p.price).toFixed(2)}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${Number(p.stock ?? 0) > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                    {Number(p.stock ?? 0)} {p.unit ?? ""}
-                  </span>
+                  {(() => {
+                    const stock = p.product_type === "variable" ? (stockByProduct.get(p.id) ?? 0) : Number(p.stock ?? 0);
+                    return (
+                      <span className={`rounded-full px-2 py-0.5 text-xs ${stock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                        {stock} {p.unit ?? ""}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">

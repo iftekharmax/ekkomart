@@ -94,19 +94,38 @@ function StockAdjustmentsPage() {
       <div className="rounded-2xl border bg-card p-6">
         <h3 className="mb-4 text-lg font-semibold">New adjustment</h3>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <Label>Product / Variation</Label>
+          <div className={isVariable ? "" : "sm:col-span-2"}>
+            <Label>Product</Label>
             <select
               className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
+              value={productId}
+              onChange={(e) => { setProductId(e.target.value); setVariationId(""); }}
             >
-              <option value="">Select item…</option>
-              {options.map((o) => (
-                <option key={o.key} value={o.key}>{o.label}</option>
+              <option value="">Select product…</option>
+              {(products as any[]).map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}{p.product_type === "variable" ? " (variable)" : ` (stock: ${Number(p.stock ?? 0)})`}
+                </option>
               ))}
             </select>
           </div>
+          {isVariable && (
+            <div>
+              <Label>Variation</Label>
+              <select
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={variationId}
+                onChange={(e) => setVariationId(e.target.value)}
+              >
+                <option value="">Select variation…</option>
+                {productVariations.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} (stock: {Number(v.stock ?? 0)})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <Label>Quantity change (use negative to reduce)</Label>
             <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="e.g. 50 or -3" />

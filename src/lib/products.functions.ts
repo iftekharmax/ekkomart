@@ -84,6 +84,17 @@ export const listVariations = createServerFn({ method: "GET" })
     return rows ?? [];
   });
 
+export const listAllVariations = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await (supabaseAdmin.from("product_variations" as any) as any)
+      .select("id, product_id, name, stock").order("position");
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
 async function assertAdmin(context: { supabase: any; userId: string }) {
   const { data, error } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
   if (error || !data) throw new Error("Forbidden");

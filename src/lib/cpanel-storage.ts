@@ -18,16 +18,21 @@ export async function uploadImage(file: File, folder: string): Promise<string> {
     contentType: file.type || undefined,
   });
   if (error) throw new Error(error.message);
-  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
-  return data.publicUrl;
+  // Bucket is private; issue a long-lived signed URL (10 years).
+  const { data, error: signErr } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+  if (signErr || !data) throw new Error(signErr?.message || "Failed to sign URL");
+  return data.signedUrl;
 }
 
 export async function removeStoredImage(url: string | null | undefined): Promise<void> {
   if (!url) return;
-  const marker = `/storage/v1/object/public/${BUCKET}/`;
+  const marker = `/object/${BUCKET}/`;
   const idx = url.indexOf(marker);
   if (idx === -1) return;
-  const path = url.slice(idx + marker.length);
+  // Strip query string (signed URLs include ?token=...)
+  const path = url.slice(idx + marker.length).split("?")[0];
   try {
     await supabase.storage.from(BUCKET).remove([path]);
   } catch {

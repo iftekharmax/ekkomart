@@ -28,10 +28,11 @@ export async function uploadImage(file: File, folder: string): Promise<string> {
 
 export async function removeStoredImage(url: string | null | undefined): Promise<void> {
   if (!url) return;
-  const marker = `/storage/v1/object/public/${BUCKET}/`;
+  const marker = `/object/${BUCKET}/`;
   const idx = url.indexOf(marker);
   if (idx === -1) return;
-  const path = url.slice(idx + marker.length);
+  // Strip query string (signed URLs include ?token=...)
+  const path = url.slice(idx + marker.length).split("?")[0];
   try {
     await supabase.storage.from(BUCKET).remove([path]);
   } catch {

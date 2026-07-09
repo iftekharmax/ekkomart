@@ -44,6 +44,7 @@ const NAV: NavItem[] = [
       { to: "/admin/suppliers", label: "Suppliers", icon: Truck },
     ],
   },
+  { to: "/admin/purchases", label: "Purchases", icon: ShoppingCart },
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
   { to: "/admin/users", label: "Users", icon: Users },
 ];

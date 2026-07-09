@@ -130,11 +130,12 @@ export const createProduct = createServerFn({ method: "POST" })
   .inputValidator((data: z.infer<typeof productInput>) => productInput.parse(data))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const variations = data.variations ?? [];
     const payload = normalize(data);
-    const { data: row, error } = await context.supabase.from("products").insert(payload as any).select().single();
+    const { data: row, error } = await supabaseAdmin.from("products").insert(payload as any).select().single();
     if (error) throw new Error(error.message);
-    if (data.product_type === "variable" && row?.id) await syncVariations(context.supabase, row.id, variations);
+    if (data.product_type === "variable" && row?.id) await syncVariations(supabaseAdmin, row.id, variations);
     return row;
   });
 
@@ -145,12 +146,13 @@ export const updateProduct = createServerFn({ method: "POST" })
   .inputValidator((data: z.infer<typeof productUpdate>) => productUpdate.parse(data))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { id, ...rest } = data;
     const variations = rest.variations;
     const payload = normalize(rest as z.infer<typeof productInput>);
-    const { data: row, error } = await context.supabase.from("products").update(payload as any).eq("id", id).select().single();
+    const { data: row, error } = await supabaseAdmin.from("products").update(payload as any).eq("id", id).select().single();
     if (error) throw new Error(error.message);
-    if (variations !== undefined) await syncVariations(context.supabase, id, variations);
+    if (variations !== undefined) await syncVariations(supabaseAdmin, id, variations);
     return row;
   });
 
@@ -159,7 +161,8 @@ export const deleteProduct = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { error } = await context.supabase.from("products").delete().eq("id", data.id);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("products").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

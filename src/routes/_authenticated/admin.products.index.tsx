@@ -71,9 +71,14 @@ function ProductsListPage() {
                 <td className="px-4 py-3 text-muted-foreground">{p.category}{p.subcategory ? ` / ${p.subcategory}` : ""}</td>
                 <td className="px-4 py-3">${Number(p.price).toFixed(2)}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${Number(p.stock ?? 0) > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                    {Number(p.stock ?? 0)} {p.unit ?? ""}
-                  </span>
+                  {(() => {
+                    const stock = p.product_type === "variable" ? (stockByProduct.get(p.id) ?? 0) : Number(p.stock ?? 0);
+                    return (
+                      <span className={`rounded-full px-2 py-0.5 text-xs ${stock > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                        {stock} {p.unit ?? ""}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end gap-2">

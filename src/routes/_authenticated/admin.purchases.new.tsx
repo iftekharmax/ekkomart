@@ -1,15 +1,16 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { createPurchase } from "@/lib/purchases.functions";
-import { listProducts, listVariations } from "@/lib/products.functions";
-import { listSuppliers } from "@/lib/catalog.functions";
+import { listProducts, listAllVariations } from "@/lib/products.functions";
+import { listSuppliers, createSupplier } from "@/lib/catalog.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Trash2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,17 +19,20 @@ export const Route = createFileRoute("/_authenticated/admin/purchases/new")({
   component: NewPurchasePage,
 });
 
-type Line = { product_id: string; variation_id: string | null; quantity: number; unit_cost: number };
+type Line = { product_id: string; variation_id: string | null; label: string; quantity: number; unit_cost: number };
 
 function NewPurchasePage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const suppliersFn = useServerFn(listSuppliers);
   const productsFn = useServerFn(listProducts);
+  const variationsFn = useServerFn(listAllVariations);
   const createFn = useServerFn(createPurchase);
+  const createSupplierFn = useServerFn(createSupplier);
 
   const { data: suppliers = [] } = useQuery({ queryKey: ["admin-suppliers"], queryFn: () => suppliersFn() });
   const { data: products = [] } = useQuery({ queryKey: ["admin-products"], queryFn: () => productsFn() });
+  const { data: variations = [] } = useQuery({ queryKey: ["admin-all-variations"], queryFn: () => variationsFn() });
 
   const [supplierId, setSupplierId] = useState<string>("");
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
@@ -37,7 +41,35 @@ function NewPurchasePage() {
   const [tax, setTax] = useState(0);
   const [shipping, setShipping] = useState(0);
   const [paid, setPaid] = useState(0);
-  const [items, setItems] = useState<Line[]>([{ product_id: "", variation_id: null, quantity: 1, unit_cost: 0 }]);
+  const [items, setItems] = useState<Line[]>([]);
+
+  const [barcode, setBarcode] = useState("");
+  const barcodeRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { barcodeRef.current?.focus(); }, []);
+
+  const scanBarcode = (raw: string) => {
+    const code = raw.trim();
+    if (!code) return;
+    const variation = (variations as any[]).find((v) => (v.barcode ?? "") === code || (v.sku ?? "") === code);
+    let product: any; let variationId: string | null = null; let label = "";
+    if (variation) {
+      product = (products as any[]).find((p) => p.id === variation.product_id);
+      if (!product) { toast.error("Variation's product not found"); return; }
+      variationId = variation.id;
+      label = `${product.name} — ${variation.name}`;
+    } else {
+      product = (products as any[]).find((p) => (p.barcode ?? "") === code || (p.sku ?? "") === code);
+      if (!product) { toast.error(`No product for barcode ${code}`); return; }
+      if (product.product_type === "variable") { toast.error("Scan a variation barcode for variable product"); return; }
+      label = product.name;
+    }
+    setItems((prev) => {
+      const idx = prev.findIndex((i) => i.product_id === product.id && i.variation_id === variationId);
+      if (idx >= 0) return prev.map((p, i) => i === idx ? { ...p, quantity: p.quantity + 1 } : p);
+      return [...prev, { product_id: product.id, variation_id: variationId, label, quantity: 1, unit_cost: 0 }];
+    });
+    setBarcode("");
+  };
 
   const subtotal = items.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_cost) || 0), 0);
   const total = subtotal - discount + tax + shipping;
@@ -48,17 +80,36 @@ function NewPurchasePage() {
       purchase_date: date, note: note || null,
       discount, tax, shipping, paid, status: "received",
       items: items.filter((i) => i.product_id && i.quantity > 0).map((i) => ({
-        product_id: i.product_id,
-        variation_id: i.variation_id || null,
-        quantity: Number(i.quantity),
-        unit_cost: Number(i.unit_cost),
+        product_id: i.product_id, variation_id: i.variation_id || null,
+        quantity: Number(i.quantity), unit_cost: Number(i.unit_cost),
       })),
     } as any }),
     onSuccess: () => {
       toast.success("Purchase recorded — stock updated");
       qc.invalidateQueries({ queryKey: ["admin-purchases"] });
       qc.invalidateQueries({ queryKey: ["admin-products"] });
+      qc.invalidateQueries({ queryKey: ["admin-all-variations"] });
       navigate({ to: "/admin/purchases" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Supplier modal
+  const [supOpen, setSupOpen] = useState(false);
+  const [supName, setSupName] = useState("");
+  const [supPhone, setSupPhone] = useState("");
+  const [supContact, setSupContact] = useState("");
+  const supM = useMutation({
+    mutationFn: () => createSupplierFn({ data: {
+      name: supName, contact_name: supContact || null, phone: supPhone || null,
+      email: null, address: null, description: null, image_url: null, is_active: true,
+    } as any }),
+    onSuccess: async (row: any) => {
+      toast.success("Supplier added");
+      await qc.invalidateQueries({ queryKey: ["admin-suppliers"] });
+      setSupplierId(row.id);
+      setSupOpen(false);
+      setSupName(""); setSupPhone(""); setSupContact("");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -70,41 +121,70 @@ function NewPurchasePage() {
       <div className="grid gap-4 rounded-xl border bg-card p-6 md:grid-cols-3">
         <div>
           <Label>Supplier</Label>
-          <Select value={supplierId} onValueChange={setSupplierId}>
-            <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
-            <SelectContent>
-              {(suppliers as any[]).map((s) => (
-                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Select value={supplierId} onValueChange={setSupplierId}>
+                <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
+                <SelectContent>
+                  {(suppliers as any[]).map((s) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="button" variant="outline" size="icon" onClick={() => setSupOpen(true)} title="Add supplier">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <div>
           <Label>Purchase date</Label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
-        <div className="md:col-span-1">
+        <div>
           <Label>Note</Label>
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
         </div>
       </div>
 
       <div className="mt-6 rounded-xl border bg-card p-6">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-semibold">Items</h3>
-          <Button size="sm" variant="outline" onClick={() =>
-            setItems((prev) => [...prev, { product_id: "", variation_id: null, quantity: 1, unit_cost: 0 }])
-          }><Plus className="mr-1 h-4 w-4" /> Add row</Button>
+        <div className="mb-3">
+          <Label>Scan or type barcode</Label>
+          <Input
+            ref={barcodeRef}
+            autoFocus
+            value={barcode}
+            onChange={(e) => setBarcode(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); scanBarcode(barcode); } }}
+            placeholder="Scan barcode with POS scanner or type and press Enter"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">Variation barcode auto-selects the variation.</p>
         </div>
-        <div className="space-y-3">
-          {items.map((it, idx) => (
-            <ItemRow key={idx} value={it} products={products as any[]}
-              onChange={(v) => setItems((prev) => prev.map((p, i) => i === idx ? v : p))}
-              onRemove={() => setItems((prev) => prev.filter((_, i) => i !== idx))}
-              canRemove={items.length > 1}
-            />
-          ))}
-        </div>
+
+        {items.length === 0 ? (
+          <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+            No items yet. Scan a barcode to add.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="hidden md:grid grid-cols-[1fr_100px_140px_140px_auto] gap-2 text-xs font-medium text-muted-foreground px-2">
+              <div>Product</div><div>Qty</div><div>Unit cost</div><div>Line total</div><div></div>
+            </div>
+            {items.map((it, idx) => (
+              <div key={idx} className="grid gap-2 rounded-lg border p-2 md:grid-cols-[1fr_100px_140px_140px_auto] md:items-center">
+                <div className="text-sm">{it.label}</div>
+                <Input type="number" min={1} value={it.quantity}
+                  onChange={(e) => setItems((prev) => prev.map((p, i) => i === idx ? { ...p, quantity: Number(e.target.value) || 0 } : p))} />
+                <Input type="number" min={0} step="0.01" value={it.unit_cost}
+                  onChange={(e) => setItems((prev) => prev.map((p, i) => i === idx ? { ...p, unit_cost: Number(e.target.value) || 0 } : p))} />
+                <Input disabled value={`$${(it.quantity * it.unit_cost).toFixed(2)}`} />
+                <Button variant="ghost" size="icon" onClick={() => setItems((prev) => prev.filter((_, i) => i !== idx))}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mt-6 grid gap-6 md:grid-cols-2">
@@ -126,10 +206,27 @@ function NewPurchasePage() {
 
       <div className="mt-6 flex justify-end gap-3">
         <Button variant="outline" onClick={() => navigate({ to: "/admin/purchases" })}>Cancel</Button>
-        <Button onClick={() => m.mutate()} disabled={m.isPending || !items.some((i) => i.product_id)}>
+        <Button onClick={() => m.mutate()} disabled={m.isPending || items.length === 0}>
           {m.isPending ? "Saving…" : "Save purchase"}
         </Button>
       </div>
+
+      <Dialog open={supOpen} onOpenChange={setSupOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Add supplier</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <div><Label>Name *</Label><Input value={supName} onChange={(e) => setSupName(e.target.value)} autoFocus /></div>
+            <div><Label>Contact person</Label><Input value={supContact} onChange={(e) => setSupContact(e.target.value)} /></div>
+            <div><Label>Phone</Label><Input value={supPhone} onChange={(e) => setSupPhone(e.target.value)} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSupOpen(false)}>Cancel</Button>
+            <Button onClick={() => supName.trim() && supM.mutate()} disabled={supM.isPending || !supName.trim()}>
+              {supM.isPending ? "Saving…" : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -144,69 +241,6 @@ function FieldRow({ label, value, onChange }: { label: string; value: number; on
       <span className="text-muted-foreground">{label}</span>
       <Input type="number" min={0} step="0.01" className="w-32 text-right" value={value}
         onChange={(e) => onChange(Number(e.target.value) || 0)} />
-    </div>
-  );
-}
-
-function ItemRow({ value, products, onChange, onRemove, canRemove }: {
-  value: Line; products: any[]; onChange: (v: Line) => void; onRemove: () => void; canRemove: boolean;
-}) {
-  const varsFn = useServerFn(listVariations);
-  const product = useMemo(() => products.find((p) => p.id === value.product_id), [products, value.product_id]);
-  const isVariable = product?.product_type === "variable";
-  const { data: variations = [] } = useQuery({
-    queryKey: ["variations", value.product_id],
-    queryFn: () => varsFn({ data: { product_id: value.product_id } }),
-    enabled: !!value.product_id && isVariable,
-  });
-
-  return (
-    <div className="grid gap-2 rounded-lg border p-3 md:grid-cols-[2fr_1.5fr_100px_120px_120px_auto] md:items-end">
-      <div>
-        <Label className="text-xs">Product</Label>
-        <Select value={value.product_id} onValueChange={(v) => onChange({ ...value, product_id: v, variation_id: null })}>
-          <SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger>
-          <SelectContent>
-            {products.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.name}{p.product_type === "variable" ? " (variable)" : ""}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div>
-        <Label className="text-xs">Variation</Label>
-        {isVariable ? (
-          <Select value={value.variation_id ?? ""} onValueChange={(v) => onChange({ ...value, variation_id: v })}>
-            <SelectTrigger><SelectValue placeholder="Select variation" /></SelectTrigger>
-            <SelectContent>
-              {(variations as any[]).map((v) => (
-                <SelectItem key={v.id} value={v.id}>{v.name} (stock {v.stock ?? 0})</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <Input disabled value="—" />
-        )}
-      </div>
-      <div>
-        <Label className="text-xs">Qty</Label>
-        <Input type="number" min={1} value={value.quantity}
-          onChange={(e) => onChange({ ...value, quantity: Number(e.target.value) || 0 })} />
-      </div>
-      <div>
-        <Label className="text-xs">Unit cost</Label>
-        <Input type="number" min={0} step="0.01" value={value.unit_cost}
-          onChange={(e) => onChange({ ...value, unit_cost: Number(e.target.value) || 0 })} />
-      </div>
-      <div>
-        <Label className="text-xs">Line total</Label>
-        <Input disabled value={`$${(value.quantity * value.unit_cost).toFixed(2)}`} />
-      </div>
-      <div>
-        <Button variant="ghost" size="icon" onClick={onRemove} disabled={!canRemove}>
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
     </div>
   );
 }

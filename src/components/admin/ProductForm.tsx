@@ -185,14 +185,6 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
               </select>
             </div>
             <div>
-              <Label>Supplier</Label>
-              <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.supplier_id}
-                onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}>
-                <option value="">—</option>
-                {(suppliers as any[]).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-            <div>
               <Label>Unit</Label>
               <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.unit}
                 onChange={(e) => setForm({ ...form, unit: e.target.value })}>

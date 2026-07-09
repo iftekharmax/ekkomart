@@ -288,7 +288,7 @@ export type Database = {
       }
       products: {
         Row: {
-          barcode: string
+          barcode: string | null
           brand: string | null
           category: string
           cost_price: number | null
@@ -308,8 +308,8 @@ export type Database = {
           seo_description: string | null
           seo_keywords: string[]
           seo_title: string | null
-          sku: string
-          slug: string
+          sku: string | null
+          slug: string | null
           specifications: Json
           stock: number | null
           subcategory: string | null
@@ -324,7 +324,7 @@ export type Database = {
           weight_value: number | null
         }
         Insert: {
-          barcode: string
+          barcode?: string | null
           brand?: string | null
           category: string
           cost_price?: number | null
@@ -344,8 +344,8 @@ export type Database = {
           seo_description?: string | null
           seo_keywords?: string[]
           seo_title?: string | null
-          sku: string
-          slug: string
+          sku?: string | null
+          slug?: string | null
           specifications?: Json
           stock?: number | null
           subcategory?: string | null
@@ -360,7 +360,7 @@ export type Database = {
           weight_value?: number | null
         }
         Update: {
-          barcode?: string
+          barcode?: string | null
           brand?: string | null
           category?: string
           cost_price?: number | null
@@ -380,8 +380,8 @@ export type Database = {
           seo_description?: string | null
           seo_keywords?: string[]
           seo_title?: string | null
-          sku?: string
-          slug?: string
+          sku?: string | null
+          slug?: string | null
           specifications?: Json
           stock?: number | null
           subcategory?: string | null
@@ -397,7 +397,7 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "products_supplier_id_fkey"
+            foreignKeyName: "products_supplier_fk"
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
@@ -431,6 +431,123 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      purchase_items: {
+        Row: {
+          created_at: string
+          id: string
+          line_total: number
+          product_id: string
+          purchase_id: string
+          quantity: number
+          unit_cost: number
+          variation_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          product_id: string
+          purchase_id: string
+          quantity: number
+          unit_cost?: number
+          variation_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_total?: number
+          product_id?: string
+          purchase_id?: string
+          quantity?: number
+          unit_cost?: number
+          variation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_items_purchase_id_fkey"
+            columns: ["purchase_id"]
+            isOneToOne: false
+            referencedRelation: "purchases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_items_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "product_variations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchases: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          discount: number
+          id: string
+          note: string | null
+          paid: number
+          purchase_date: string
+          reference: string
+          shipping: number
+          status: string
+          subtotal: number
+          supplier_id: string | null
+          tax: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          discount?: number
+          id?: string
+          note?: string | null
+          paid?: number
+          purchase_date?: string
+          reference: string
+          shipping?: number
+          status?: string
+          subtotal?: number
+          supplier_id?: string | null
+          tax?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          discount?: number
+          id?: string
+          note?: string | null
+          paid?: number
+          purchase_date?: string
+          reference?: string
+          shipping?: number
+          status?: string
+          subtotal?: number
+          supplier_id?: string | null
+          tax?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchases_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subcategories: {
         Row: {

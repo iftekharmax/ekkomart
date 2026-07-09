@@ -1,62 +1,54 @@
-## Product Module Expansion
+## Purchase Module
 
-Extend the `products` table and admin form with all requested fields. Media stored in a Lovable Cloud bucket; barcode scanner supports both camera and hardware input.
+Add supplier purchases that automatically bump stock for simple products and per-variation for variable products.
 
-### 1. Database migration (single migration)
+### 1. Database migration
 
-Add columns to `public.products`:
+New tables in `public`:
 
-- `slug` text UNIQUE NOT NULL (auto from name, editable)
-- `sku` text UNIQUE NOT NULL (auto-generated: `SKU-XXXXXX`)
-- `barcode` text UNIQUE (auto EAN-13 if left blank; manual override allowed)
-- `subcategory` text
-- `images` text[] DEFAULT '{}' (kept legacy `img` in sync with `images[0]`)
-- `video_url` text
-- `description` text
-- `specifications` jsonb DEFAULT '{}' (key/value pairs)
-- `weight_value` numeric, `weight_unit` text (g/kg/lb)
-- `tags` text[] DEFAULT '{}'
-- `seo_title` text, `seo_description` text, `seo_keywords` text[]
+- `purchases`
+  - `id uuid pk`, `supplier_id uuid fk suppliers`, `purchase_date date default now()`
+  - `reference text` (auto `PUR-YYMMDD-XXXX`), `note text`
+  - `subtotal numeric`, `discount numeric default 0`, `tax numeric default 0`, `shipping numeric default 0`, `total numeric`
+  - `paid numeric default 0`, `status text default 'received'` (received | pending)
+  - `created_by uuid`, `created_at`, `updated_at`
 
-Trigger `set_updated_at` already exists — keep. Add BEFORE-INSERT trigger to backfill `slug` and `sku` when missing.
+- `purchase_items`
+  - `id uuid pk`, `purchase_id uuid fk purchases on delete cascade`
+  - `product_id uuid fk products`, `variation_id uuid fk product_variations null`
+  - `quantity numeric not null check (>0)`, `unit_cost numeric not null default 0`, `line_total numeric`
 
-Backfill existing rows with generated slug/sku so the NOT NULL/UNIQUE succeeds.
+Grants: `authenticated` full, `service_role` all. RLS: admin-only via `has_role`.
 
-### 2. Storage
+Trigger `apply_purchase_stock` AFTER INSERT on `purchase_items`:
+- If `variation_id` present → `UPDATE product_variations SET stock = stock + NEW.quantity`
+- Else → `UPDATE products SET stock = coalesce(stock,0) + NEW.quantity`
 
-- Create private bucket `product-media` via storage tool
-- RLS on `storage.objects`: public SELECT for that bucket; INSERT/UPDATE/DELETE only for `has_role(auth.uid(),'admin')`
-- Admin form uploads to `product-media/{productId or draft}/...` and stores public URLs in `images[]` / `video_url`
+Symmetric reverse on DELETE (so deleting a purchase rolls stock back via cascade).
 
-### 3. Server functions (`src/lib/products.functions.ts`)
+### 2. Server functions (`src/lib/purchases.functions.ts`)
 
-- Extend Zod validators with all new fields
-- `createProduct` / `updateProduct` handle new fields; slug uniqueness enforced by DB
-- Add `generateBarcode` helper (EAN-13 with check digit)
+- `listPurchases()` — join supplier name, item count, total
+- `getPurchase({id})` — header + items with product/variation names
+- `createPurchase({supplier_id, note, discount, tax, shipping, paid, items:[{product_id, variation_id?, quantity, unit_cost}]})` — inserts header + items in one call; stock updates happen via trigger
+- `deletePurchase({id})` — cascade rolls stock back
 
-### 4. Admin form (`src/routes/_authenticated/admin.products.tsx`)
+All admin-guarded via `requireSupabaseAuth` + `has_role('admin')`.
 
-Rebuild as a tabbed dialog:
+### 3. Admin UI
 
-- **Basics**: name → auto-slug (editable), unit, price, old_price, category, subcategory, brand, tag, in_stock
-- **Identifiers**: SKU (auto, editable), barcode (auto, manual input, "Scan" button that opens camera scanner via `@zxing/browser`, and a focused input for USB/BT scanners)
-- **Media**: multi-image drag-drop uploader (thumbs, reorder, delete), single video upload
-- **Content**: description (textarea), specifications (key/value repeater)
-- **Logistics**: weight value + unit, tags (chip input)
-- **SEO**: seo_title, seo_description, seo_keywords
+- Route `src/routes/_authenticated/admin.purchases.index.tsx` — list table (date, ref, supplier, items, total, actions)
+- Route `src/routes/_authenticated/admin.purchases.new.tsx` — form:
+  - Supplier select
+  - Item rows: product combobox → if variable, show variation select; qty; unit cost; line total
+  - Discount / tax / shipping / paid; live grand total
+- Route `src/routes/_authenticated/admin.purchases.$id.tsx` — read-only detail with delete button
+- Add "Purchases" link in admin sidebar (`admin.tsx`)
 
-### 5. Packages
+### 4. Technical notes
 
-`bun add @zxing/browser slugify`
-
-### 6. Storefront
-
-Non-goal in this pass beyond making sure `img` still resolves (kept in sync with `images[0]`). Product detail page can be enhanced next.
-
-### Technical notes
-
-- Slug generation: `slugify(name, {lower:true, strict:true})` + short random suffix on collision
-- SKU: `SKU-` + 8 hex chars from `gen_random_bytes`
-- Barcode: 12 random digits + EAN-13 check digit
-- Scanner: `BrowserMultiFormatReader` from `@zxing/browser`, released on unmount
-- Media bucket is public-read so storefront `<img>`/`<video>` work without signed URLs
+- Reference format generated in server fn (`PUR-YYMMDD-` + 4 random hex).
+- Trigger keeps stock authoritative — client never sends stock deltas.
+- `products.stock` may be null for legacy rows; trigger uses `coalesce`.
+- Deleting a purchase decrements stock; UI confirms before delete.
+- Variation dropdown filtered client-side using existing `listVariations` fn.

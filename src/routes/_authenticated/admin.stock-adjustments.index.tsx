@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -13,7 +13,6 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/stock-adjustments/")({ component: StockAdjustmentsPage });
 
-type TargetKey = string; // "p:<product_id>" or "v:<product_id>:<variation_id>"
 
 function StockAdjustmentsPage() {
   const qc = useQueryClient();

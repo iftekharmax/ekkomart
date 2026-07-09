@@ -79,7 +79,6 @@ export function ean13() {
 async function uploadFile(file: File, folder: string): Promise<string> {
   return uploadImage(file, folder);
 }
-}
 
 export function toProductPayload(f: ProductFormValues) {
   return {

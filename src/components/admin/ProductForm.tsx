@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listCategories, listSubcategories } from "@/lib/taxonomy.functions";
 import { listBrands, listUnits, listSuppliers, listAttributes } from "@/lib/catalog.functions";
-import { supabase } from "@/integrations/supabase/client";
+import { uploadImage } from "@/lib/cpanel-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,9 +16,6 @@ import { Plus, X, Upload, ScanLine, Camera, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import slugify from "slugify";
-
-const BUCKET = "product-media";
-const SIGNED_TTL = 60 * 60 * 24 * 365 * 5;
 
 export type Spec = { key: string; value: string };
 export type Variation = {
@@ -80,13 +77,7 @@ export function ean13() {
   return base + ((10 - (sum % 10)) % 10);
 }
 async function uploadFile(file: File, folder: string): Promise<string> {
-  const ext = file.name.split(".").pop() ?? "bin";
-  const path = `${folder}/${Date.now()}-${randHex(6)}.${ext}`;
-  const { error } = await supabase.storage.from(BUCKET).upload(path, file, { cacheControl: "31536000", upsert: false, contentType: file.type });
-  if (error) throw error;
-  const { data, error: signErr } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_TTL);
-  if (signErr) throw signErr;
-  return data.signedUrl;
+  return uploadImage(file, folder);
 }
 
 export function toProductPayload(f: ProductFormValues) {

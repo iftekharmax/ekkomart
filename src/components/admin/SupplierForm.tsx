@@ -6,10 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Upload, X } from "lucide-react";
-import { removeStoredImage } from "@/lib/storage-utils";
+import { uploadImage, removeStoredImage } from "@/lib/cpanel-storage";
 
 export type SupplierFormValues = {
   name: string; contact_name: string; email: string; phone: string;
@@ -26,13 +25,8 @@ export function SupplierForm({ initial, submitLabel, submitting, onSubmit }: {
 
   const uploadM = useMutation({
     mutationFn: async (file: File) => {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `suppliers/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from("product-media").upload(path, file, { cacheControl: "3600", upsert: false, contentType: file.type });
-      if (error) throw error;
-      const { data, error: sErr } = await supabase.storage.from("product-media").createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
-      if (sErr || !data) throw sErr ?? new Error("Could not sign URL");
-      return { url: data.signedUrl, previous: form.image_url };
+      const url = await uploadImage(file, "suppliers");
+      return { url, previous: form.image_url };
     },
     onMutate: () => setUploading(true),
     onSettled: () => setUploading(false),

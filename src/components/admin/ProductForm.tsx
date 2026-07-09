@@ -229,8 +229,23 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
         </section>
 
         <section>
-          <h3 className="mb-3 text-lg font-semibold">Product video</h3>
-          <VideoUploader url={form.video_url} onChange={(url) => setForm({ ...form, video_url: url })} />
+          <h3 className="mb-3 text-lg font-semibold">Product video (YouTube)</h3>
+          <Input
+            value={form.video_url}
+            placeholder="https://www.youtube.com/watch?v=..."
+            onChange={(e) => setForm({ ...form, video_url: e.target.value })}
+          />
+          {form.video_url && youtubeEmbedUrl(form.video_url) && (
+            <div className="mt-3 aspect-video max-w-md overflow-hidden rounded-md border">
+              <iframe
+                className="h-full w-full"
+                src={youtubeEmbedUrl(form.video_url)!}
+                title="YouTube preview"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          )}
         </section>
 
         <section>
@@ -253,18 +268,10 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
         </section>
 
         <section>
-          <h3 className="mb-3 text-lg font-semibold">Logistics</h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div><Label>Weight</Label><Input type="number" step="0.01" value={form.weight_value ?? ""} onChange={(e) => setForm({ ...form, weight_value: e.target.value ? Number(e.target.value) : null })} /></div>
-            <div>
-              <Label>Weight unit</Label>
-              <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.weight_unit} onChange={(e) => setForm({ ...form, weight_unit: e.target.value })}>
-                <option value="g">g</option><option value="kg">kg</option><option value="lb">lb</option><option value="oz">oz</option>
-              </select>
-            </div>
-            <div className="sm:col-span-2"><Label>Tags</Label><ChipInput values={form.tags} onChange={(tags) => setForm({ ...form, tags })} placeholder="Type a tag and press Enter" /></div>
-          </div>
+          <h3 className="mb-3 text-lg font-semibold">Tags</h3>
+          <ChipInput values={form.tags} onChange={(tags) => setForm({ ...form, tags })} placeholder="Type a tag and press Enter" />
         </section>
+
 
         <section>
           <h3 className="mb-3 text-lg font-semibold">SEO</h3>

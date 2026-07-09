@@ -47,6 +47,38 @@ function NewPurchasePage() {
   const barcodeRef = useRef<HTMLInputElement>(null);
   useEffect(() => { barcodeRef.current?.focus(); }, []);
 
+  const suggestions = (() => {
+    const q = barcode.trim().toLowerCase();
+    if (!q) return [] as Array<{ key: string; label: string; sub: string; add: () => void }>;
+    const out: Array<{ key: string; label: string; sub: string; add: () => void }> = [];
+    for (const v of variations as any[]) {
+      if (out.length >= 8) break;
+      const hay = `${v.name ?? ""} ${v.barcode ?? ""} ${v.sku ?? ""}`.toLowerCase();
+      if (!hay.includes(q)) continue;
+      const p = (products as any[]).find((x) => x.id === v.product_id);
+      if (!p) continue;
+      out.push({
+        key: `v-${v.id}`,
+        label: `${p.name} — ${v.name}`,
+        sub: `${v.barcode ?? v.sku ?? ""}`,
+        add: () => scanBarcode(v.barcode || v.sku || ""),
+      });
+    }
+    for (const p of products as any[]) {
+      if (out.length >= 8) break;
+      if (p.product_type === "variable") continue;
+      const hay = `${p.name ?? ""} ${p.barcode ?? ""} ${p.sku ?? ""}`.toLowerCase();
+      if (!hay.includes(q)) continue;
+      out.push({
+        key: `p-${p.id}`,
+        label: p.name,
+        sub: `${p.barcode ?? p.sku ?? ""}`,
+        add: () => scanBarcode(p.barcode || p.sku || ""),
+      });
+    }
+    return out;
+  })();
+
   const scanBarcode = (raw: string) => {
     const code = raw.trim();
     if (!code) return;
@@ -150,16 +182,31 @@ function NewPurchasePage() {
       <div className="mt-6 rounded-xl border bg-card p-6">
         <div className="mb-3">
           <Label>Scan or type barcode</Label>
-          <Input
-            ref={barcodeRef}
-            autoFocus
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); scanBarcode(barcode); } }}
-            placeholder="Scan barcode with POS scanner or type and press Enter"
-          />
-          <p className="mt-1 text-xs text-muted-foreground">Variation barcode auto-selects the variation.</p>
+          <div className="relative">
+            <Input
+              ref={barcodeRef}
+              autoFocus
+              value={barcode}
+              onChange={(e) => setBarcode(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); scanBarcode(barcode); } }}
+              placeholder="Scan barcode with POS scanner or type and press Enter"
+            />
+            {suggestions.length > 0 && (
+              <div className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-md border bg-popover shadow-md">
+                {suggestions.map((s) => (
+                  <button type="button" key={s.key}
+                    onClick={() => { s.add(); barcodeRef.current?.focus(); }}
+                    className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent">
+                    <span>{s.label}</span>
+                    <span className="text-xs text-muted-foreground">{s.sub}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">Type to search or scan; variation barcode auto-selects the variation.</p>
         </div>
+
 
         {items.length === 0 ? (
           <div className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">

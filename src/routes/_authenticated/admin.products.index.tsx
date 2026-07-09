@@ -14,9 +14,16 @@ function ProductsListPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const listFn = useServerFn(listProducts);
+  const varsFn = useServerFn(listAllVariations);
   const deleteFn = useServerFn(deleteProduct);
   const [q, setQ] = useState("");
   const { data: products = [] } = useQuery({ queryKey: ["admin-products"], queryFn: () => listFn() });
+  const { data: variations = [] } = useQuery({ queryKey: ["admin-all-variations"], queryFn: () => varsFn() });
+  const stockByProduct = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const v of variations as any[]) m.set(v.product_id, (m.get(v.product_id) ?? 0) + Number(v.stock ?? 0));
+    return m;
+  }, [variations]);
   const deleteM = useMutation({
     mutationFn: (id: string) => deleteFn({ data: { id } }),
     onSuccess: () => { toast.success("Deleted"); qc.invalidateQueries({ queryKey: ["admin-products"] }); },

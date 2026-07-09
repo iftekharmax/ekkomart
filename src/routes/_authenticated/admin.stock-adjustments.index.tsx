@@ -31,6 +31,18 @@ function StockAdjustmentsPage() {
   const [quantity, setQuantity] = useState<string>("");
   const [reason, setReason] = useState("initial");
   const [note, setNote] = useState("");
+  const [search, setSearch] = useState("");
+  const [openSearch, setOpenSearch] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) setOpenSearch(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
 
   const selectedProduct = useMemo(
     () => (products as any[]).find((p) => p.id === productId) ?? null,

@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listCategories, listSubcategories } from "@/lib/taxonomy.functions";
-import { listBrands, listUnits, listSuppliers, listAttributes } from "@/lib/catalog.functions";
+import { listBrands, listUnits, listAttributes } from "@/lib/catalog.functions";
 import { uploadImage } from "@/lib/cpanel-storage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,7 +80,24 @@ async function uploadFile(file: File, folder: string): Promise<string> {
   return uploadImage(file, folder);
 }
 
+export function youtubeEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") return `https://www.youtube.com/embed/${u.pathname.slice(1)}`;
+    if (host.endsWith("youtube.com")) {
+      const v = u.searchParams.get("v");
+      if (v) return `https://www.youtube.com/embed/${v}`;
+      if (u.pathname.startsWith("/embed/")) return url;
+      if (u.pathname.startsWith("/shorts/")) return `https://www.youtube.com/embed/${u.pathname.split("/")[2]}`;
+    }
+  } catch { /* invalid URL */ }
+  return null;
+}
+
 export function toProductPayload(f: ProductFormValues) {
+  const stockNum = Number(f.stock ?? 0);
   return {
     product_type: f.product_type,
     name: f.name,
@@ -88,11 +105,12 @@ export function toProductPayload(f: ProductFormValues) {
     sku: f.sku || `SKU-${randHex(8)}`,
     barcode: f.barcode || ean13(),
     unit: f.unit, price: f.price, old_price: f.old_price,
-    cost_price: f.cost_price, tax_percent: f.tax_percent,
-    stock: f.stock, low_stock_alert: f.low_stock_alert,
+    cost_price: f.cost_price, tax_percent: null,
+    stock: f.stock, low_stock_alert: null,
     category: f.category, subcategory: f.subcategory,
-    brand: f.brand, supplier_id: f.supplier_id || null, tag: f.tag,
-    in_stock: f.in_stock, images: f.images, video_url: f.video_url,
+    brand: f.brand, supplier_id: null, tag: f.tag,
+    in_stock: f.product_type === "variable" ? true : stockNum > 0,
+    images: f.images, video_url: f.video_url,
     description: f.description,
     specifications: Object.fromEntries(f.specifications.filter((s) => s.key).map((s) => [s.key, s.value])),
     weight_value: f.weight_value, weight_unit: f.weight_unit,
@@ -100,13 +118,14 @@ export function toProductPayload(f: ProductFormValues) {
     img: f.images[0] ?? null,
     variations: f.product_type === "variable" ? f.variations.map((v) => ({
       id: v.id, name: v.name, attributes: v.attributes,
-      sku: v.sku || null, barcode: v.barcode || null,
+      sku: v.sku || `SKU-${randHex(8)}`, barcode: v.barcode || ean13(),
       cost_price: v.cost_price, price: v.price, discount_price: v.discount_price,
-      stock: v.stock, low_stock_alert: v.low_stock_alert,
+      stock: v.stock, low_stock_alert: null,
       image_url: v.image_url || null, is_active: v.is_active,
     })) : [],
   };
 }
+
 
 export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
   initial: ProductFormValues; submitLabel: string; submitting?: boolean;
@@ -118,13 +137,12 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
   const subsFn = useServerFn(listSubcategories);
   const brandsFn = useServerFn(listBrands);
   const unitsFn = useServerFn(listUnits);
-  const suppliersFn = useServerFn(listSuppliers);
   const attrsFn = useServerFn(listAttributes);
   const { data: categories = [] } = useQuery({ queryKey: ["admin-categories"], queryFn: () => catsFn() });
   const { data: subcategories = [] } = useQuery({ queryKey: ["admin-subcategories-all"], queryFn: () => subsFn({ data: {} } as any) });
   const { data: brands = [] } = useQuery({ queryKey: ["admin-brands"], queryFn: () => brandsFn() });
   const { data: units = [] } = useQuery({ queryKey: ["admin-units"], queryFn: () => unitsFn() });
-  const { data: suppliers = [] } = useQuery({ queryKey: ["admin-suppliers"], queryFn: () => suppliersFn() });
+
   const { data: attributes = [] } = useQuery({ queryKey: ["admin-attributes"], queryFn: () => attrsFn() });
 
   const selectedCat = (categories as any[]).find((c) => c.name === form.category || c.slug === form.category);
@@ -185,14 +203,6 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
               </select>
             </div>
             <div>
-              <Label>Supplier</Label>
-              <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.supplier_id}
-                onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}>
-                <option value="">—</option>
-                {(suppliers as any[]).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </div>
-            <div>
               <Label>Unit</Label>
               <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.unit}
                 onChange={(e) => setForm({ ...form, unit: e.target.value })}>
@@ -200,23 +210,14 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
                 {(units as any[]).length === 0 && <option value={form.unit}>{form.unit}</option>}
               </select>
             </div>
-            <div><Label>Tag</Label><Input value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value })} /></div>
+            <div><Label>Tag</Label><Input value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value })} placeholder="e.g. New, Popular" /></div>
 
             {!isVar && (
               <>
                 <div><Label>Purchase price</Label><Input type="number" step="0.01" value={form.cost_price ?? ""} onChange={(e) => setForm({ ...form, cost_price: e.target.value ? Number(e.target.value) : null })} /></div>
                 <div><Label>Selling price</Label><Input required type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} /></div>
                 <div><Label>Old price</Label><Input type="number" step="0.01" value={form.old_price ?? ""} onChange={(e) => setForm({ ...form, old_price: e.target.value ? Number(e.target.value) : null })} /></div>
-                <div><Label>Tax %</Label><Input type="number" step="0.01" value={form.tax_percent ?? ""} onChange={(e) => setForm({ ...form, tax_percent: e.target.value ? Number(e.target.value) : null })} /></div>
                 <div><Label>Current stock</Label><Input type="number" value={form.stock ?? 0} onChange={(e) => setForm({ ...form, stock: e.target.value ? Number(e.target.value) : 0 })} /></div>
-                <div><Label>Low stock alert</Label><Input type="number" value={form.low_stock_alert ?? ""} onChange={(e) => setForm({ ...form, low_stock_alert: e.target.value ? Number(e.target.value) : null })} /></div>
-                <div>
-                  <Label>SKU</Label>
-                  <div className="flex gap-2">
-                    <Input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="auto-generate" />
-                    <Button type="button" variant="outline" onClick={() => setForm({ ...form, sku: `SKU-${randHex(8)}` })}><RefreshCw className="h-4 w-4" /></Button>
-                  </div>
-                </div>
                 <div>
                   <Label>Barcode (EAN-13)</Label>
                   <div className="flex gap-2">
@@ -229,12 +230,9 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
                 </div>
               </>
             )}
-            <div className="flex items-center gap-2 sm:col-span-2">
-              <Switch checked={form.in_stock} onCheckedChange={(v) => setForm({ ...form, in_stock: v })} />
-              <Label>In stock</Label>
-            </div>
           </div>
         </section>
+
 
         {isVar && (
           <section>
@@ -249,8 +247,23 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
         </section>
 
         <section>
-          <h3 className="mb-3 text-lg font-semibold">Product video</h3>
-          <VideoUploader url={form.video_url} onChange={(url) => setForm({ ...form, video_url: url })} />
+          <h3 className="mb-3 text-lg font-semibold">Product video (YouTube)</h3>
+          <Input
+            value={form.video_url}
+            placeholder="https://www.youtube.com/watch?v=..."
+            onChange={(e) => setForm({ ...form, video_url: e.target.value })}
+          />
+          {form.video_url && youtubeEmbedUrl(form.video_url) && (
+            <div className="mt-3 aspect-video max-w-md overflow-hidden rounded-md border">
+              <iframe
+                className="h-full w-full"
+                src={youtubeEmbedUrl(form.video_url)!}
+                title="YouTube preview"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          )}
         </section>
 
         <section>
@@ -273,18 +286,10 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
         </section>
 
         <section>
-          <h3 className="mb-3 text-lg font-semibold">Logistics</h3>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div><Label>Weight</Label><Input type="number" step="0.01" value={form.weight_value ?? ""} onChange={(e) => setForm({ ...form, weight_value: e.target.value ? Number(e.target.value) : null })} /></div>
-            <div>
-              <Label>Weight unit</Label>
-              <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={form.weight_unit} onChange={(e) => setForm({ ...form, weight_unit: e.target.value })}>
-                <option value="g">g</option><option value="kg">kg</option><option value="lb">lb</option><option value="oz">oz</option>
-              </select>
-            </div>
-            <div className="sm:col-span-2"><Label>Tags</Label><ChipInput values={form.tags} onChange={(tags) => setForm({ ...form, tags })} placeholder="Type a tag and press Enter" /></div>
-          </div>
+          <h3 className="mb-3 text-lg font-semibold">Tags</h3>
+          <ChipInput values={form.tags} onChange={(tags) => setForm({ ...form, tags })} placeholder="Type a tag and press Enter" />
         </section>
+
 
         <section>
           <h3 className="mb-3 text-lg font-semibold">SEO</h3>

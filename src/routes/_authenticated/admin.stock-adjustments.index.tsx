@@ -54,6 +54,34 @@ function StockAdjustmentsPage() {
   );
   const isVariable = selectedProduct?.product_type === "variable";
 
+  const filteredProducts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const list = products as any[];
+    if (!q) return list.slice(0, 50);
+    return list.filter((p) =>
+      (p.name ?? "").toLowerCase().includes(q) ||
+      (p.barcode ?? "").toLowerCase().includes(q) ||
+      (p.sku ?? "").toLowerCase().includes(q),
+    ).slice(0, 50);
+  }, [products, search]);
+
+  const pickProduct = (p: any) => {
+    setProductId(p.id);
+    setVariationId("");
+    setSearch(`${p.name}${p.barcode ? ` — ${p.barcode}` : ""}`);
+    setOpenSearch(false);
+  };
+
+  // Auto-select on exact barcode/SKU match (barcode scanner friendly)
+  useEffect(() => {
+    const q = search.trim();
+    if (!q || !openSearch) return;
+    const exact = (products as any[]).find((p) => p.barcode === q || p.sku === q);
+    if (exact && exact.id !== productId) pickProduct(exact);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, products]);
+
+
   const parsed = useMemo(() => {
     if (!productId) return null;
     if (isVariable) {

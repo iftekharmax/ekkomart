@@ -80,7 +80,24 @@ async function uploadFile(file: File, folder: string): Promise<string> {
   return uploadImage(file, folder);
 }
 
+export function youtubeEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") return `https://www.youtube.com/embed/${u.pathname.slice(1)}`;
+    if (host.endsWith("youtube.com")) {
+      const v = u.searchParams.get("v");
+      if (v) return `https://www.youtube.com/embed/${v}`;
+      if (u.pathname.startsWith("/embed/")) return url;
+      if (u.pathname.startsWith("/shorts/")) return `https://www.youtube.com/embed/${u.pathname.split("/")[2]}`;
+    }
+  } catch { /* invalid URL */ }
+  return null;
+}
+
 export function toProductPayload(f: ProductFormValues) {
+  const stockNum = Number(f.stock ?? 0);
   return {
     product_type: f.product_type,
     name: f.name,
@@ -88,11 +105,12 @@ export function toProductPayload(f: ProductFormValues) {
     sku: f.sku || `SKU-${randHex(8)}`,
     barcode: f.barcode || ean13(),
     unit: f.unit, price: f.price, old_price: f.old_price,
-    cost_price: f.cost_price, tax_percent: f.tax_percent,
-    stock: f.stock, low_stock_alert: f.low_stock_alert,
+    cost_price: f.cost_price, tax_percent: null,
+    stock: f.stock, low_stock_alert: null,
     category: f.category, subcategory: f.subcategory,
-    brand: f.brand, supplier_id: f.supplier_id || null, tag: f.tag,
-    in_stock: f.in_stock, images: f.images, video_url: f.video_url,
+    brand: f.brand, supplier_id: null, tag: f.tag,
+    in_stock: f.product_type === "variable" ? true : stockNum > 0,
+    images: f.images, video_url: f.video_url,
     description: f.description,
     specifications: Object.fromEntries(f.specifications.filter((s) => s.key).map((s) => [s.key, s.value])),
     weight_value: f.weight_value, weight_unit: f.weight_unit,
@@ -100,13 +118,14 @@ export function toProductPayload(f: ProductFormValues) {
     img: f.images[0] ?? null,
     variations: f.product_type === "variable" ? f.variations.map((v) => ({
       id: v.id, name: v.name, attributes: v.attributes,
-      sku: v.sku || null, barcode: v.barcode || null,
+      sku: v.sku || `SKU-${randHex(8)}`, barcode: v.barcode || ean13(),
       cost_price: v.cost_price, price: v.price, discount_price: v.discount_price,
-      stock: v.stock, low_stock_alert: v.low_stock_alert,
+      stock: v.stock, low_stock_alert: null,
       image_url: v.image_url || null, is_active: v.is_active,
     })) : [],
   };
 }
+
 
 export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
   initial: ProductFormValues; submitLabel: string; submitting?: boolean;

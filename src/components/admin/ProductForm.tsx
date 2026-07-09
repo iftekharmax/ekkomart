@@ -97,7 +97,6 @@ export function youtubeEmbedUrl(url: string): string | null {
 }
 
 export function toProductPayload(f: ProductFormValues) {
-  const stockNum = Number(f.stock ?? 0);
   return {
     product_type: f.product_type,
     name: f.name,
@@ -106,10 +105,10 @@ export function toProductPayload(f: ProductFormValues) {
     barcode: f.barcode || ean13(),
     unit: f.unit, price: f.price, old_price: f.old_price,
     cost_price: f.cost_price, tax_percent: null,
-    stock: f.stock, low_stock_alert: null,
+    stock: f.id ? f.stock : 0, low_stock_alert: null,
     category: f.category, subcategory: f.subcategory,
     brand: f.brand, supplier_id: null, tag: f.tag,
-    in_stock: f.product_type === "variable" ? true : stockNum > 0,
+    in_stock: f.product_type === "variable" ? true : Number(f.stock ?? 0) > 0,
     images: f.images, video_url: f.video_url,
     description: f.description,
     specifications: Object.fromEntries(f.specifications.filter((s) => s.key).map((s) => [s.key, s.value])),
@@ -217,7 +216,6 @@ export function ProductForm({ initial, submitLabel, submitting, onSubmit }: {
                 <div><Label>Purchase price</Label><Input type="number" step="0.01" value={form.cost_price ?? ""} onChange={(e) => setForm({ ...form, cost_price: e.target.value ? Number(e.target.value) : null })} /></div>
                 <div><Label>Selling price</Label><Input required type="number" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} /></div>
                 <div><Label>Old price</Label><Input type="number" step="0.01" value={form.old_price ?? ""} onChange={(e) => setForm({ ...form, old_price: e.target.value ? Number(e.target.value) : null })} /></div>
-                <div><Label>Current stock</Label><Input type="number" value={form.stock ?? 0} onChange={(e) => setForm({ ...form, stock: e.target.value ? Number(e.target.value) : 0 })} /></div>
                 <div>
                   <Label>Barcode (EAN-13)</Label>
                   <div className="flex gap-2">

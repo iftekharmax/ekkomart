@@ -2,7 +2,7 @@
 import { createFileRoute, Outlet, redirect, Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { LayoutDashboard, Package, ShoppingBag, Users, ArrowLeft, Carrot, LogOut, ChevronDown, PlusCircle, FolderTree, ListTree, Ruler, Tags, BadgeCheck, Truck, ShoppingCart } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingBag, Users, ArrowLeft, Carrot, LogOut, ChevronDown, PlusCircle, FolderTree, ListTree, Ruler, Tags, BadgeCheck, Truck, ShoppingCart, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -45,6 +45,7 @@ const NAV: NavItem[] = [
     ],
   },
   { to: "/admin/purchases", label: "Purchases", icon: ShoppingCart },
+  { to: "/admin/stock-adjustments", label: "Stock Adjustments", icon: SlidersHorizontal },
   { to: "/admin/orders", label: "Orders", icon: ShoppingBag },
   { to: "/admin/users", label: "Users", icon: Users },
 ];

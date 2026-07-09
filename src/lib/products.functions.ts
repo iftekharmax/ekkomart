@@ -66,7 +66,8 @@ export const listProducts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
-    const { data, error } = await context.supabase.from("products").select("*").order("created_at", { ascending: false });
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin.from("products").select("*").order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];
   });
@@ -76,7 +77,8 @@ export const listVariations = createServerFn({ method: "GET" })
   .inputValidator((d: { product_id: string }) => z.object({ product_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { data: rows, error } = await (context.supabase.from("product_variations" as any) as any)
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await (supabaseAdmin.from("product_variations" as any) as any)
       .select("*").eq("product_id", data.product_id).order("position");
     if (error) throw new Error(error.message);
     return rows ?? [];

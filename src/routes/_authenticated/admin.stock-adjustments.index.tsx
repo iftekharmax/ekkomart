@@ -27,44 +27,30 @@ function StockAdjustmentsPage() {
   const { data: products = [] } = useQuery({ queryKey: ["admin-products"], queryFn: () => prodFn() });
   const { data: variations = [] } = useQuery({ queryKey: ["admin-all-variations"], queryFn: () => varsFn() });
 
-  const [target, setTarget] = useState<TargetKey>("");
+  const [productId, setProductId] = useState<string>("");
+  const [variationId, setVariationId] = useState<string>("");
   const [quantity, setQuantity] = useState<string>("");
   const [reason, setReason] = useState("initial");
   const [note, setNote] = useState("");
 
-  const options = useMemo(() => {
-    const varsByProduct = new Map<string, any[]>();
-    for (const v of variations as any[]) {
-      const arr = varsByProduct.get(v.product_id) ?? [];
-      arr.push(v);
-      varsByProduct.set(v.product_id, arr);
-    }
-    const rows: { key: TargetKey; label: string; group?: string }[] = [];
-    for (const p of products as any[]) {
-      if (p.product_type === "variable") {
-        const vs = varsByProduct.get(p.id) ?? [];
-        if (vs.length === 0) continue;
-        for (const v of vs) {
-          rows.push({
-            key: `v:${p.id}:${v.id}`,
-            label: `${p.name} — ${v.name} (stock: ${Number(v.stock ?? 0)})`,
-          });
-        }
-      } else {
-        rows.push({
-          key: `p:${p.id}`,
-          label: `${p.name} (stock: ${Number(p.stock ?? 0)})`,
-        });
-      }
-    }
-    return rows;
-  }, [products, variations]);
+  const selectedProduct = useMemo(
+    () => (products as any[]).find((p) => p.id === productId) ?? null,
+    [products, productId],
+  );
+  const productVariations = useMemo(
+    () => (variations as any[]).filter((v) => v.product_id === productId),
+    [variations, productId],
+  );
+  const isVariable = selectedProduct?.product_type === "variable";
 
   const parsed = useMemo(() => {
-    if (!target) return null;
-    const [kind, productId, variationId] = target.split(":");
-    return { productId, variationId: kind === "v" ? variationId : null };
-  }, [target]);
+    if (!productId) return null;
+    if (isVariable) {
+      if (!variationId) return null;
+      return { productId, variationId: variationId as string | null };
+    }
+    return { productId, variationId: null as string | null };
+  }, [productId, variationId, isVariable]);
 
   const createM = useMutation({
     mutationFn: () => createFn({

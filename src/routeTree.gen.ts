@@ -31,6 +31,7 @@ import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAdminUnitsIndexRouteImport } from './routes/_authenticated/admin.units.index'
 import { Route as AuthenticatedAdminSuppliersIndexRouteImport } from './routes/_authenticated/admin.suppliers.index'
 import { Route as AuthenticatedAdminSubcategoriesIndexRouteImport } from './routes/_authenticated/admin.subcategories.index'
+import { Route as AuthenticatedAdminStockAdjustmentsIndexRouteImport } from './routes/_authenticated/admin.stock-adjustments.index'
 import { Route as AuthenticatedAdminPurchasesIndexRouteImport } from './routes/_authenticated/admin.purchases.index'
 import { Route as AuthenticatedAdminProductsIndexRouteImport } from './routes/_authenticated/admin.products.index'
 import { Route as AuthenticatedAdminCategoriesIndexRouteImport } from './routes/_authenticated/admin.categories.index'
@@ -164,6 +165,12 @@ const AuthenticatedAdminSubcategoriesIndexRoute =
   AuthenticatedAdminSubcategoriesIndexRouteImport.update({
     id: '/subcategories/',
     path: '/subcategories/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminStockAdjustmentsIndexRoute =
+  AuthenticatedAdminStockAdjustmentsIndexRouteImport.update({
+    id: '/stock-adjustments/',
+    path: '/stock-adjustments/',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminPurchasesIndexRoute =
@@ -326,6 +333,7 @@ export interface FileRoutesByFullPath {
   '/admin/categories/': typeof AuthenticatedAdminCategoriesIndexRoute
   '/admin/products/': typeof AuthenticatedAdminProductsIndexRoute
   '/admin/purchases/': typeof AuthenticatedAdminPurchasesIndexRoute
+  '/admin/stock-adjustments/': typeof AuthenticatedAdminStockAdjustmentsIndexRoute
   '/admin/subcategories/': typeof AuthenticatedAdminSubcategoriesIndexRoute
   '/admin/suppliers/': typeof AuthenticatedAdminSuppliersIndexRoute
   '/admin/units/': typeof AuthenticatedAdminUnitsIndexRoute
@@ -369,6 +377,7 @@ export interface FileRoutesByTo {
   '/admin/categories': typeof AuthenticatedAdminCategoriesIndexRoute
   '/admin/products': typeof AuthenticatedAdminProductsIndexRoute
   '/admin/purchases': typeof AuthenticatedAdminPurchasesIndexRoute
+  '/admin/stock-adjustments': typeof AuthenticatedAdminStockAdjustmentsIndexRoute
   '/admin/subcategories': typeof AuthenticatedAdminSubcategoriesIndexRoute
   '/admin/suppliers': typeof AuthenticatedAdminSuppliersIndexRoute
   '/admin/units': typeof AuthenticatedAdminUnitsIndexRoute
@@ -415,6 +424,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/categories/': typeof AuthenticatedAdminCategoriesIndexRoute
   '/_authenticated/admin/products/': typeof AuthenticatedAdminProductsIndexRoute
   '/_authenticated/admin/purchases/': typeof AuthenticatedAdminPurchasesIndexRoute
+  '/_authenticated/admin/stock-adjustments/': typeof AuthenticatedAdminStockAdjustmentsIndexRoute
   '/_authenticated/admin/subcategories/': typeof AuthenticatedAdminSubcategoriesIndexRoute
   '/_authenticated/admin/suppliers/': typeof AuthenticatedAdminSuppliersIndexRoute
   '/_authenticated/admin/units/': typeof AuthenticatedAdminUnitsIndexRoute
@@ -461,6 +471,7 @@ export interface FileRouteTypes {
     | '/admin/categories/'
     | '/admin/products/'
     | '/admin/purchases/'
+    | '/admin/stock-adjustments/'
     | '/admin/subcategories/'
     | '/admin/suppliers/'
     | '/admin/units/'
@@ -504,6 +515,7 @@ export interface FileRouteTypes {
     | '/admin/categories'
     | '/admin/products'
     | '/admin/purchases'
+    | '/admin/stock-adjustments'
     | '/admin/subcategories'
     | '/admin/suppliers'
     | '/admin/units'
@@ -549,6 +561,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/categories/'
     | '/_authenticated/admin/products/'
     | '/_authenticated/admin/purchases/'
+    | '/_authenticated/admin/stock-adjustments/'
     | '/_authenticated/admin/subcategories/'
     | '/_authenticated/admin/suppliers/'
     | '/_authenticated/admin/units/'
@@ -732,6 +745,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminSubcategoriesIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/stock-adjustments/': {
+      id: '/_authenticated/admin/stock-adjustments/'
+      path: '/stock-adjustments'
+      fullPath: '/admin/stock-adjustments/'
+      preLoaderRoute: typeof AuthenticatedAdminStockAdjustmentsIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/purchases/': {
       id: '/_authenticated/admin/purchases/'
       path: '/purchases'
@@ -900,6 +920,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminCategoriesIndexRoute: typeof AuthenticatedAdminCategoriesIndexRoute
   AuthenticatedAdminProductsIndexRoute: typeof AuthenticatedAdminProductsIndexRoute
   AuthenticatedAdminPurchasesIndexRoute: typeof AuthenticatedAdminPurchasesIndexRoute
+  AuthenticatedAdminStockAdjustmentsIndexRoute: typeof AuthenticatedAdminStockAdjustmentsIndexRoute
   AuthenticatedAdminSubcategoriesIndexRoute: typeof AuthenticatedAdminSubcategoriesIndexRoute
   AuthenticatedAdminSuppliersIndexRoute: typeof AuthenticatedAdminSuppliersIndexRoute
   AuthenticatedAdminUnitsIndexRoute: typeof AuthenticatedAdminUnitsIndexRoute
@@ -933,6 +954,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
     AuthenticatedAdminCategoriesIndexRoute,
   AuthenticatedAdminProductsIndexRoute: AuthenticatedAdminProductsIndexRoute,
   AuthenticatedAdminPurchasesIndexRoute: AuthenticatedAdminPurchasesIndexRoute,
+  AuthenticatedAdminStockAdjustmentsIndexRoute:
+    AuthenticatedAdminStockAdjustmentsIndexRoute,
   AuthenticatedAdminSubcategoriesIndexRoute:
     AuthenticatedAdminSubcategoriesIndexRoute,
   AuthenticatedAdminSuppliersIndexRoute: AuthenticatedAdminSuppliersIndexRoute,

@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listAdjustments, createAdjustment, deleteAdjustment } from "@/lib/stock-adjustments.functions";
-import { listProducts, listVariations } from "@/lib/products.functions";
+import { listProducts, listAllVariations } from "@/lib/products.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,37 +13,64 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/stock-adjustments/")({ component: StockAdjustmentsPage });
 
+type TargetKey = string; // "p:<product_id>" or "v:<product_id>:<variation_id>"
+
 function StockAdjustmentsPage() {
   const qc = useQueryClient();
   const listFn = useServerFn(listAdjustments);
   const prodFn = useServerFn(listProducts);
-  const varsFn = useServerFn(listVariations);
+  const varsFn = useServerFn(listAllVariations);
   const createFn = useServerFn(createAdjustment);
   const deleteFn = useServerFn(deleteAdjustment);
 
   const { data: adjustments = [] } = useQuery({ queryKey: ["stock-adjustments"], queryFn: () => listFn() });
   const { data: products = [] } = useQuery({ queryKey: ["admin-products"], queryFn: () => prodFn() });
+  const { data: variations = [] } = useQuery({ queryKey: ["admin-all-variations"], queryFn: () => varsFn() });
 
-  const [productId, setProductId] = useState("");
-  const [variationId, setVariationId] = useState("");
+  const [target, setTarget] = useState<TargetKey>("");
   const [quantity, setQuantity] = useState<string>("");
   const [reason, setReason] = useState("initial");
   const [note, setNote] = useState("");
 
-  const selectedProduct = (products as any[]).find((p) => p.id === productId);
-  const isVariable = selectedProduct?.product_type === "variable";
+  const options = useMemo(() => {
+    const varsByProduct = new Map<string, any[]>();
+    for (const v of variations as any[]) {
+      const arr = varsByProduct.get(v.product_id) ?? [];
+      arr.push(v);
+      varsByProduct.set(v.product_id, arr);
+    }
+    const rows: { key: TargetKey; label: string; group?: string }[] = [];
+    for (const p of products as any[]) {
+      if (p.product_type === "variable") {
+        const vs = varsByProduct.get(p.id) ?? [];
+        if (vs.length === 0) continue;
+        for (const v of vs) {
+          rows.push({
+            key: `v:${p.id}:${v.id}`,
+            label: `${p.name} — ${v.name} (stock: ${Number(v.stock ?? 0)})`,
+          });
+        }
+      } else {
+        rows.push({
+          key: `p:${p.id}`,
+          label: `${p.name} (stock: ${Number(p.stock ?? 0)})`,
+        });
+      }
+    }
+    return rows;
+  }, [products, variations]);
 
-  const { data: variations = [] } = useQuery({
-    queryKey: ["admin-variations", productId],
-    queryFn: () => varsFn({ data: { product_id: productId } }),
-    enabled: !!productId && isVariable,
-  });
+  const parsed = useMemo(() => {
+    if (!target) return null;
+    const [kind, productId, variationId] = target.split(":");
+    return { productId, variationId: kind === "v" ? variationId : null };
+  }, [target]);
 
   const createM = useMutation({
     mutationFn: () => createFn({
       data: {
-        product_id: productId,
-        variation_id: isVariable ? (variationId || null) : null,
+        product_id: parsed!.productId,
+        variation_id: parsed!.variationId,
         quantity: Number(quantity),
         reason,
         note: note || null,
@@ -53,7 +80,7 @@ function StockAdjustmentsPage() {
       toast.success("Stock adjusted");
       qc.invalidateQueries({ queryKey: ["stock-adjustments"] });
       qc.invalidateQueries({ queryKey: ["admin-products"] });
-      qc.invalidateQueries({ queryKey: ["admin-variations", productId] });
+      qc.invalidateQueries({ queryKey: ["admin-all-variations"] });
       setQuantity(""); setNote("");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -65,13 +92,14 @@ function StockAdjustmentsPage() {
       toast.success("Adjustment reverted");
       qc.invalidateQueries({ queryKey: ["stock-adjustments"] });
       qc.invalidateQueries({ queryKey: ["admin-products"] });
+      qc.invalidateQueries({ queryKey: ["admin-all-variations"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const canSubmit = productId && quantity && Number(quantity) !== 0 && (!isVariable || variationId);
+  const canSubmit = !!parsed && quantity !== "" && Number(quantity) !== 0;
 
-  const rows = useMemo(() => adjustments as any[], [adjustments]);
+  const rows = adjustments as any[];
 
   return (
     <div className="space-y-8">
@@ -80,31 +108,19 @@ function StockAdjustmentsPage() {
       <div className="rounded-2xl border bg-card p-6">
         <h3 className="mb-4 text-lg font-semibold">New adjustment</h3>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label>Product</Label>
-            <select className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-              value={productId}
-              onChange={(e) => { setProductId(e.target.value); setVariationId(""); }}>
-              <option value="">Select product…</option>
-              {(products as any[]).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} — stock: {Number(p.stock ?? 0)}
-                </option>
+          <div className="sm:col-span-2">
+            <Label>Product / Variation</Label>
+            <select
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={target}
+              onChange={(e) => setTarget(e.target.value)}
+            >
+              <option value="">Select item…</option>
+              {options.map((o) => (
+                <option key={o.key} value={o.key}>{o.label}</option>
               ))}
             </select>
           </div>
-          {isVariable && (
-            <div>
-              <Label>Variation</Label>
-              <select className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-                value={variationId} onChange={(e) => setVariationId(e.target.value)}>
-                <option value="">Select variation…</option>
-                {(variations as any[]).map((v) => (
-                  <option key={v.id} value={v.id}>{v.name} — stock: {Number(v.stock ?? 0)}</option>
-                ))}
-              </select>
-            </div>
-          )}
           <div>
             <Label>Quantity change (use negative to reduce)</Label>
             <Input type="number" value={quantity} onChange={(e) => setQuantity(e.target.value)} placeholder="e.g. 50 or -3" />

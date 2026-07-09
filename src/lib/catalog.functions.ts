@@ -159,11 +159,14 @@ const supplierInput = z.object({
   image_url: z.string().optional().nullable(),
   is_active: z.boolean().optional(),
 });
-export const listSuppliers = createServerFn({ method: "GET" }).handler(async () => {
-  const { data, error } = await publicClient().from("suppliers" as any).select("*").order("name");
-  if (error) throw new Error(error.message);
-  return data ?? [];
-});
+export const listSuppliers = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { data, error } = await (context.supabase.from("suppliers" as any) as any).select("*").order("name");
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
 export const createSupplier = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: z.infer<typeof supplierInput>) => supplierInput.parse(d))

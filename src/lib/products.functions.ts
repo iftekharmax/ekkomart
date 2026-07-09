@@ -62,17 +62,21 @@ function publicClient() {
   );
 }
 
-export const listProducts = createServerFn({ method: "GET" }).handler(async () => {
-  const sb = publicClient();
-  const { data, error } = await sb.from("products").select("*").order("created_at", { ascending: false });
-  if (error) throw new Error(error.message);
-  return data ?? [];
-});
+export const listProducts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { data, error } = await context.supabase.from("products").select("*").order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
 
 export const listVariations = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((d: { product_id: string }) => z.object({ product_id: z.string().uuid() }).parse(d))
-  .handler(async ({ data }) => {
-    const { data: rows, error } = await (publicClient().from("product_variations" as any) as any)
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: rows, error } = await (context.supabase.from("product_variations" as any) as any)
       .select("*").eq("product_id", data.product_id).order("position");
     if (error) throw new Error(error.message);
     return rows ?? [];

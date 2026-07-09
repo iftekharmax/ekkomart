@@ -133,21 +133,42 @@ function StockAdjustmentsPage() {
       <div className="rounded-2xl border bg-card p-6">
         <h3 className="mb-4 text-lg font-semibold">New adjustment</h3>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className={isVariable ? "" : "sm:col-span-2"}>
-            <Label>Product</Label>
-            <select
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
-              value={productId}
-              onChange={(e) => { setProductId(e.target.value); setVariationId(""); }}
-            >
-              <option value="">Select product…</option>
-              {(products as any[]).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}{p.product_type === "variable" ? " (variable)" : ` (stock: ${Number(p.stock ?? 0)})`}
-                </option>
-              ))}
-            </select>
+          <div className={isVariable ? "" : "sm:col-span-2"} ref={searchRef}>
+            <Label>Product (search by name or barcode)</Label>
+            <div className="relative">
+              <Input
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setOpenSearch(true); if (productId) { setProductId(""); setVariationId(""); } }}
+                onFocus={() => setOpenSearch(true)}
+                placeholder="Type or scan barcode…"
+                autoComplete="off"
+              />
+              {openSearch && (
+                <div className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-md border bg-popover shadow-lg">
+                  {filteredProducts.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">No products found.</div>
+                  )}
+                  {filteredProducts.map((p) => (
+                    <button
+                      type="button"
+                      key={p.id}
+                      onClick={() => pickProduct(p)}
+                      className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-accent"
+                    >
+                      <span className="truncate">
+                        {p.name}
+                        {p.barcode ? <span className="ml-2 text-xs text-muted-foreground">#{p.barcode}</span> : null}
+                      </span>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {p.product_type === "variable" ? "variable" : `stock: ${Number(p.stock ?? 0)}`}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+
           {isVariable && (
             <div>
               <Label>Variation</Label>

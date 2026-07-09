@@ -64,8 +64,8 @@ function ProductsListPage() {
                 <td className="px-4 py-3 text-muted-foreground">{p.category}{p.subcategory ? ` / ${p.subcategory}` : ""}</td>
                 <td className="px-4 py-3">${Number(p.price).toFixed(2)}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${p.in_stock ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                    {p.in_stock ? "In stock" : "Out"}
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${Number(p.stock ?? 0) > 0 ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                    {Number(p.stock ?? 0)} {p.unit ?? ""}
                   </span>
                 </td>
                 <td className="px-4 py-3">

@@ -58,31 +58,31 @@ function PurchaseDetail() {
 
   return (
     <div className="max-w-4xl">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <Link to="/admin/purchases" className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" /> Back
           </Link>
-          <h2 className="text-2xl font-bold">Purchase {header.reference}</h2>
-          <p className="text-sm text-muted-foreground">
+          <h2 className="truncate text-xl font-bold sm:text-2xl">Purchase {header.reference}</h2>
+          <p className="text-xs text-muted-foreground sm:text-sm">
             {header.purchase_date} · {header.supplier?.name ?? "No supplier"} ·{" "}
             <span className={due <= 0 ? "text-green-600" : "text-destructive"}>{status}</span>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {due > 0 && (
-            <Button onClick={() => { setPayAmount(due); setPayOpen(true); }}>
+            <Button size="sm" onClick={() => { setPayAmount(due); setPayOpen(true); }}>
               <DollarSign className="mr-2 h-4 w-4" /> Pay due
             </Button>
           )}
-          <Button variant="outline" onClick={() => {
+          <Button size="sm" variant="outline" onClick={() => {
             if (confirm("Delete purchase? Stock will be decreased.")) del.mutate();
           }}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-card">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-xl border bg-card">
+        <table className="w-full min-w-[600px] text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
               <th className="px-4 py-3 font-semibold">Product</th>
@@ -125,7 +125,8 @@ function PurchaseDetail() {
         {(payments ?? []).length === 0 ? (
           <div className="px-4 py-6 text-sm text-muted-foreground">No payments recorded yet.</div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] text-sm">
             <thead className="bg-muted/20 text-left">
               <tr>
                 <th className="px-4 py-2 font-semibold">Date</th>
@@ -145,6 +146,7 @@ function PurchaseDetail() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

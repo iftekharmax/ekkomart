@@ -29,18 +29,67 @@ function PurchasesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Purchases</h2>
-          <p className="text-sm text-muted-foreground">Record supplier purchases — stock updates automatically.</p>
+      <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="truncate text-xl font-bold sm:text-2xl">Purchases</h2>
+          <p className="hidden text-sm text-muted-foreground sm:block">Record supplier purchases — stock updates automatically.</p>
         </div>
-        <Button onClick={() => navigate({ to: "/admin/purchases/new" })}>
-          <Plus className="mr-2 h-4 w-4" /> New purchase
+        <Button size="sm" className="shrink-0" onClick={() => navigate({ to: "/admin/purchases/new" })}>
+          <Plus className="mr-1 h-4 w-4" /> <span className="hidden sm:inline">New purchase</span><span className="sm:hidden">New</span>
         </Button>
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-card">
-        <table className="w-full text-sm">
+      {/* Mobile card list */}
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          <div className="rounded-xl border bg-card px-4 py-8 text-center text-sm text-muted-foreground">Loading…</div>
+        ) : (rows as any[]).length === 0 ? (
+          <div className="rounded-xl border bg-card px-4 py-8 text-center text-sm text-muted-foreground">No purchases yet.</div>
+        ) : (rows as any[]).map((p) => {
+          const due = Math.max(0, Number(p.total) - Number(p.paid ?? 0));
+          const items = (p.items ?? []) as any[];
+          const totalQty = items.reduce((s, it) => s + Number(it.quantity ?? 0), 0);
+          return (
+            <div key={p.id} className="rounded-xl border bg-card p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="font-mono text-xs text-muted-foreground">{p.reference}</div>
+                  <div className="truncate text-sm font-semibold">{p.supplier?.name ?? "—"}</div>
+                  <div className="text-xs text-muted-foreground">{p.purchase_date}</div>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  <Link to="/admin/purchases/$id" params={{ id: p.id }}>
+                    <Button size="sm" variant="outline"><Eye className="h-4 w-4" /></Button>
+                  </Link>
+                  <Button size="sm" variant="outline" onClick={() => {
+                    if (confirm("Delete purchase? Stock will be decreased.")) del.mutate(p.id);
+                  }}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              </div>
+              {items.length > 0 && (
+                <ul className="mt-2 space-y-0.5 border-t pt-2">
+                  {items.map((it) => (
+                    <li key={it.id} className="text-xs">
+                      {it.product?.name ?? "—"}
+                      {it.variation?.name ? <span className="text-muted-foreground"> · {it.variation.name}</span> : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-3 grid grid-cols-4 gap-2 border-t pt-3 text-xs">
+                <div><div className="text-muted-foreground">Qty</div><div className="font-semibold">{totalQty}</div></div>
+                <div><div className="text-muted-foreground">Total</div><div className="font-semibold">${Number(p.total).toFixed(2)}</div></div>
+                <div><div className="text-muted-foreground">Paid</div><div className="font-semibold">${Number(p.paid ?? 0).toFixed(2)}</div></div>
+                <div><div className="text-muted-foreground">Due</div><div className={`font-semibold ${due > 0 ? "text-destructive" : "text-green-600"}`}>${due.toFixed(2)}</div></div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden overflow-x-auto rounded-xl border bg-card md:block">
+        <table className="w-full min-w-[900px] text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
               <th className="px-4 py-3 font-semibold">Date</th>

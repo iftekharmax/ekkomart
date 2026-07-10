@@ -218,14 +218,30 @@ function NewPurchasePage() {
               <div>Product</div><div>Qty</div><div>Unit cost</div><div>Line total</div><div></div>
             </div>
             {items.map((it, idx) => (
-              <div key={idx} className="grid gap-2 rounded-lg border p-2 md:grid-cols-[1fr_100px_140px_140px_auto] md:items-center">
-                <div className="text-sm">{it.label}</div>
-                <Input type="number" min={1} value={it.quantity}
-                  onChange={(e) => setItems((prev) => prev.map((p, i) => i === idx ? { ...p, quantity: Number(e.target.value) || 0 } : p))} />
-                <Input type="number" min={0} step="0.01" value={it.unit_cost}
-                  onChange={(e) => setItems((prev) => prev.map((p, i) => i === idx ? { ...p, unit_cost: Number(e.target.value) || 0 } : p))} />
-                <Input disabled value={`$${(it.quantity * it.unit_cost).toFixed(2)}`} />
-                <Button variant="ghost" size="icon" onClick={() => setItems((prev) => prev.filter((_, i) => i !== idx))}>
+              <div key={idx} className="rounded-lg border p-3 md:grid md:grid-cols-[1fr_100px_140px_140px_auto] md:gap-2 md:p-2 md:items-center">
+                <div className="mb-2 flex items-start justify-between gap-2 md:mb-0 md:block">
+                  <div className="text-sm font-medium md:font-normal">{it.label}</div>
+                  <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setItems((prev) => prev.filter((_, i) => i !== idx))}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-3 gap-2 md:contents">
+                  <div className="md:contents">
+                    <Label className="text-xs text-muted-foreground md:hidden">Qty</Label>
+                    <Input type="number" min={1} value={it.quantity}
+                      onChange={(e) => setItems((prev) => prev.map((p, i) => i === idx ? { ...p, quantity: Number(e.target.value) || 0 } : p))} />
+                  </div>
+                  <div className="md:contents">
+                    <Label className="text-xs text-muted-foreground md:hidden">Unit cost</Label>
+                    <Input type="number" min={0} step="0.01" value={it.unit_cost}
+                      onChange={(e) => setItems((prev) => prev.map((p, i) => i === idx ? { ...p, unit_cost: Number(e.target.value) || 0 } : p))} />
+                  </div>
+                  <div className="md:contents">
+                    <Label className="text-xs text-muted-foreground md:hidden">Total</Label>
+                    <Input disabled value={`$${(it.quantity * it.unit_cost).toFixed(2)}`} />
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" className="hidden md:inline-flex" onClick={() => setItems((prev) => prev.filter((_, i) => i !== idx))}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

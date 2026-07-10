@@ -177,6 +177,9 @@ export const listPosSales = createServerFn({ method: "GET" })
         items,
         quantity,
         items_count: items.length,
+        tax: Number(meta.tax) || 0,
+        subtotal: Number(meta.subtotal) || 0,
+        discount: Number(meta.discount) || 0,
       };
     });
     const total = rows.reduce((s, r) => s + r.total, 0);

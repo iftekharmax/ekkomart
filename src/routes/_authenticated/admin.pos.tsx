@@ -413,6 +413,13 @@ function PosPage() {
 
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-semibold">{it.name}</div>
+                      <div className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap text-[11px] leading-tight text-slate-500">
+                        <span className="truncate">Barcode: {it.barcode?.trim() ? it.barcode : "—"}</span>
+                        <span className="text-slate-300">·</span>
+                        <span className={`shrink-0 font-semibold ${it.stock == null ? "text-slate-500" : (it.stock ?? 0) <= 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                          {it.stock == null ? "Stock: N/A" : (it.stock ?? 0) <= 0 ? "Out of stock" : `Stock: ${it.stock} ${it.unit ?? "pcs"}`}
+                        </span>
+                      </div>
                       <div className="text-xs text-slate-500">{money(Number(it.price))} × {it.qty} = <b className="text-slate-800 dark:text-slate-100">{money(Number(it.price) * it.qty)}</b></div>
                     </div>
                     <div className="flex items-center gap-1">

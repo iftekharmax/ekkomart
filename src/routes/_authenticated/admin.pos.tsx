@@ -51,7 +51,7 @@ function PosPage() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const historyQ = useQuery({
     queryKey: ["pos-today-sales"],
-    queryFn: () => historyFn({}) as Promise<{ rows: { id: string; total: number; created_at: string; payment_method: string; customer: string | null }[]; total: number; count: number }>,
+    queryFn: () => historyFn({}) as Promise<{ rows: { id: string; total: number; created_at: string; payment_method: string; customer: string | null; items: { name: string; qty: number; price: number }[]; quantity: number }[]; total: number; count: number }>,
     enabled: historyOpen,
   });
 

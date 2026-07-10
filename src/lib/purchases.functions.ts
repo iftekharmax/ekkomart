@@ -35,6 +35,7 @@ const itemInput = z.object({
 const purchaseInput = z.object({
   supplier_id: z.string().uuid().nullable().optional(),
   purchase_date: z.string().optional(),
+  reference: z.string().trim().max(100).nullable().optional(),
   note: z.string().nullable().optional(),
   discount: z.number().nonnegative().default(0),
   tax: z.number().nonnegative().default(0),
@@ -90,7 +91,7 @@ export const createPurchase = createServerFn({ method: "POST" })
     const subtotal = data.items.reduce((s, i) => s + i.quantity * i.unit_cost, 0);
     const total = subtotal - data.discount + data.tax + data.shipping;
     const header = {
-      reference: makeReference(),
+      reference: (data.reference?.trim() ? data.reference.trim() : makeReference()),
       supplier_id: data.supplier_id ?? null,
       purchase_date: data.purchase_date ?? new Date().toISOString().slice(0, 10),
       note: data.note ?? null,

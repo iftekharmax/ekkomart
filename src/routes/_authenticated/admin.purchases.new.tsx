@@ -37,6 +37,7 @@ function NewPurchasePage() {
   const [supplierId, setSupplierId] = useState<string>("");
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState("");
+  const [reference, setReference] = useState("");
   const [discount, setDiscount] = useState(0);
   const [tax, setTax] = useState(0);
   const [shipping, setShipping] = useState(0);
@@ -110,6 +111,7 @@ function NewPurchasePage() {
     mutationFn: () => createFn({ data: {
       supplier_id: supplierId || null,
       purchase_date: date, note: note || null,
+      reference: reference.trim() || null,
       discount, tax, shipping, paid, status: "received",
       items: items.filter((i) => i.product_id && i.quantity > 0).map((i) => ({
         product_id: i.product_id, variation_id: i.variation_id || null,
@@ -174,8 +176,8 @@ function NewPurchasePage() {
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div>
-          <Label>Note</Label>
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
+          <Label>Invoice No.</Label>
+          <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Auto-generate if empty" />
         </div>
       </div>
 

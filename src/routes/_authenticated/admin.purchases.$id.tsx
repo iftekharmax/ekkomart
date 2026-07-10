@@ -83,6 +83,9 @@ function PurchaseDetail() {
           <span>Total</span><span>${Number(header.total).toFixed(2)}</span>
         </div>
         <Row label="Paid" value={`$${Number(header.paid).toFixed(2)}`} />
+        <div className={`flex justify-between text-sm font-semibold ${(Number(header.total) - Number(header.paid)) > 0 ? "text-destructive" : "text-green-600"}`}>
+          <span>Due</span><span>${Math.max(0, Number(header.total) - Number(header.paid)).toFixed(2)}</span>
+        </div>
       </div>
 
       {header.note && (

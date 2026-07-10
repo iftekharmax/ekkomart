@@ -48,21 +48,27 @@ function PurchasesPage() {
               <th className="px-4 py-3 font-semibold">Supplier</th>
               <th className="px-4 py-3 font-semibold">Items</th>
               <th className="px-4 py-3 text-right font-semibold">Total</th>
+              <th className="px-4 py-3 text-right font-semibold">Paid</th>
+              <th className="px-4 py-3 text-right font-semibold">Due</th>
               <th className="px-4 py-3 text-right font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>
             ) : (rows as any[]).length === 0 ? (
-              <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No purchases yet.</td></tr>
-            ) : (rows as any[]).map((p) => (
+              <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No purchases yet.</td></tr>
+            ) : (rows as any[]).map((p) => {
+              const due = Math.max(0, Number(p.total) - Number(p.paid ?? 0));
+              return (
               <tr key={p.id} className="border-t">
                 <td className="px-4 py-3">{p.purchase_date}</td>
                 <td className="px-4 py-3 font-mono text-xs">{p.reference}</td>
                 <td className="px-4 py-3">{p.supplier?.name ?? "—"}</td>
                 <td className="px-4 py-3">{(p.items ?? []).length}</td>
                 <td className="px-4 py-3 text-right font-semibold">${Number(p.total).toFixed(2)}</td>
+                <td className="px-4 py-3 text-right">${Number(p.paid ?? 0).toFixed(2)}</td>
+                <td className={`px-4 py-3 text-right font-semibold ${due > 0 ? "text-destructive" : "text-green-600"}`}>${due.toFixed(2)}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex justify-end gap-2">
                     <Link to="/admin/purchases/$id" params={{ id: p.id }}>
@@ -74,7 +80,8 @@ function PurchasesPage() {
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

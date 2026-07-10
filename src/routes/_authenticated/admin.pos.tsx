@@ -49,7 +49,7 @@ function PosPage() {
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
-  const [tax, setTax] = useState(0);
+  const [taxMode, setTaxMode] = useState<"default" | "free">("default");
   const [paid, setPaid] = useState(0);
   const [method, setMethod] = useState<"cash" | "card" | "mobile" | "other">("cash");
   const [customer, setCustomer] = useState("");
@@ -76,9 +76,8 @@ function PosPage() {
       setCart(auto.cart.map((c) => ({ ...c, price: Number(c.price), qty: Number(c.qty) })));
       setCustomer(auto.customer ?? "");
       setDiscount(Number(auto.discount) || 0);
-      setTax(Number(auto.tax) || 0);
+      setTaxMode(auto.taxMode ?? "default");
       setMethod(auto.method ?? "cash");
-      toast.message("Draft auto-restored", { description: "Continuing your unsaved cart" });
     }
     hydratedRef.current = true;
     searchRef.current?.focus();
@@ -95,13 +94,14 @@ function PosPage() {
       const version = ++autosaveVersionRef.current;
       const existing = loadAutosave();
       if (existing && (existing.version ?? 0) > version) return; // don't overwrite newer
-      persistAutosave({ cart, customer, discount, tax, method, version, at: Date.now() });
-      toast.message("Draft auto-saved", { duration: 900 });
+      persistAutosave({ cart, customer, discount, taxMode, method, version, at: Date.now() });
     }, 800);
     return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
-  }, [cart, customer, discount, tax, method]);
+  }, [cart, customer, discount, taxMode, method]);
 
   const subtotal = useMemo(() => cart.reduce((s, it) => s + it.price * it.qty, 0), [cart]);
+  const TAX_RATE = 0.08;
+  const tax = taxMode === "default" ? Math.round((subtotal - discount) * TAX_RATE * 100) / 100 : 0;
   const total = Math.max(0, subtotal - discount + tax);
   const change = Math.max(0, paid - total);
 
@@ -141,7 +141,7 @@ function PosPage() {
     }));
   }
   function remove(id: string) { setCart((prev) => prev.filter((i) => i.id !== id)); }
-  function clearAll() { setCart([]); setDiscount(0); setTax(0); setPaid(0); setCustomer(""); }
+  function clearAll() { setCart([]); setDiscount(0); setTaxMode("default"); setPaid(0); setCustomer(""); }
 
   function openNotFound(code: string) {
     setNotFound({ code });
@@ -275,7 +275,7 @@ function PosPage() {
     const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const extra = cart.length > 1 ? ` +${cart.length - 1}` : "";
     const name = `${first.name}${extra} · ${money(Number(first.price))} · ${time}`;
-    const d: Draft = { id: crypto.randomUUID(), at: Date.now(), name, cart, customer, discount, tax, method };
+    const d: Draft = { id: crypto.randomUUID(), at: Date.now(), name, cart, customer, discount, taxMode, method };
     const next = [d, ...drafts].slice(0, 20);
     setDrafts(next); persistDrafts(next);
     clearAll();
@@ -285,7 +285,7 @@ function PosPage() {
   function loadDraft(id: string) {
     const d = drafts.find((x) => x.id === id); if (!d) return;
     setCart(d.cart.map((c) => ({ ...c, price: Number(c.price), qty: Number(c.qty) })));
-    setCustomer(d.customer); setDiscount(Number(d.discount) || 0); setTax(Number(d.tax) || 0); setMethod(d.method);
+    setCustomer(d.customer); setDiscount(Number(d.discount) || 0); setTaxMode(d.taxMode ?? "default"); setMethod(d.method);
     setPaid(0);
     const next = drafts.filter((x) => x.id !== id);
     setDrafts(next); persistDrafts(next);
@@ -354,10 +354,8 @@ function PosPage() {
                             disabled={out}
                             className={`flex w-full items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left transition last:border-0 dark:border-slate-800 ${i === activeIdx ? "bg-primary/5" : "hover:bg-slate-50 dark:hover:bg-slate-800"} disabled:cursor-not-allowed disabled:opacity-50`}
                           >
-                            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-                              {p.img ? <img src={p.img} alt="" className="h-full w-full object-cover" /> : (
-                                <div className="grid h-full place-items-center text-slate-300"><Package className="h-5 w-5" /></div>
-                              )}
+                            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                              <Package className="h-5 w-5" />
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{p.name}</div>
@@ -411,10 +409,8 @@ function PosPage() {
                     {justAddedId === it.id && (
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
                     )}
-                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-                      {it.img ? <img src={it.img} alt="" className="h-full w-full object-cover" /> : (
-                        <div className="grid h-full place-items-center text-slate-300"><Package className="h-5 w-5" /></div>
-                      )}
+                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                      <Package className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-semibold">{it.name}</div>
@@ -466,8 +462,8 @@ function PosPage() {
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="mb-3 grid grid-cols-2 gap-2">
-            <label className="text-xs text-slate-500">Customer
-              <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Walk-in" className="mt-1 h-9" />
+            <label className="text-xs text-slate-500">Mobile number
+              <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="01XXXXXXXXX" inputMode="tel" className="mt-1 h-9" />
             </label>
             <label className="text-xs text-slate-500">Method
               <Select value={method} onValueChange={(v) => setMethod(v as any)}>
@@ -484,14 +480,20 @@ function PosPage() {
               <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(Math.max(0, Number(e.target.value) || 0))} className="mt-1 h-9" />
             </label>
             <label className="text-xs text-slate-500">Tax
-              <Input type="number" min={0} value={tax} onChange={(e) => setTax(Math.max(0, Number(e.target.value) || 0))} className="mt-1 h-9" />
+              <Select value={taxMode} onValueChange={(v) => setTaxMode(v as "default" | "free")}>
+                <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Default (8%)</SelectItem>
+                  <SelectItem value="free">Tax free</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
           </div>
 
           <div className="space-y-1 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-950">
             <Row label="Subtotal" value={money(subtotal)} />
             <Row label="Discount" value={`− ${money(discount)}`} />
-            <Row label="Tax" value={`+ ${money(tax)}`} />
+            <Row label={taxMode === "default" ? "Tax (8%)" : "Tax (free)"} value={`+ ${money(tax)}`} />
             <div className="my-1 border-t border-dashed border-slate-200 dark:border-slate-800" />
             <Row label={<span className="font-bold text-slate-900 dark:text-slate-100">Total</span>} value={<span className="text-lg font-black text-primary">{money(total)}</span>} />
           </div>
@@ -687,13 +689,16 @@ function escapeHtml(s: string) {
 // ============ Drafts (localStorage) ============
 type Draft = {
   id: string; at: number; name?: string; cart: CartItem[]; customer: string;
-  discount: number; tax: number; method: "cash" | "card" | "mobile" | "other";
+  discount: number; taxMode: "default" | "free"; method: "cash" | "card" | "mobile" | "other";
 };
 const DRAFTS_KEY = "pos.drafts.v1";
 const AUTOSAVE_KEY = "pos.autosave.v1";
 function loadDrafts(): Draft[] {
   if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(DRAFTS_KEY) || "[]"); } catch { return []; }
+  try {
+    const raw = JSON.parse(localStorage.getItem(DRAFTS_KEY) || "[]") as any[];
+    return raw.map((d) => ({ ...d, taxMode: d.taxMode ?? (Number(d.tax) > 0 ? "default" : "free") }));
+  } catch { return []; }
 }
 function persistDrafts(d: Draft[]) {
   try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(d)); } catch { /* ignore */ }
@@ -723,12 +728,17 @@ function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove }: {
         ) : (
           <ul className="max-h-96 space-y-2 overflow-y-auto">
             {drafts.map((d) => {
-              const total = d.cart.reduce((s, it) => s + it.price * it.qty, 0) - d.discount + d.tax;
+              const subtotal = d.cart.reduce((s, it) => s + it.price * it.qty, 0);
+              const tax = d.taxMode === "default" ? Math.round((subtotal - d.discount) * 0.08 * 100) / 100 : 0;
+              const total = Math.max(0, subtotal - d.discount + tax);
+              const itemsCount = d.cart.reduce((s, it) => s + it.qty, 0);
+              const dt = new Date(d.at);
               return (
                 <li key={d.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold">{d.name || `${d.customer || "Walk-in"} · ${d.cart.length} items`}</div>
-                    <div className="text-[11px] text-slate-500">{new Date(d.at).toLocaleString()} · {d.cart.length} items · {money(Math.max(0, total))}</div>
+                    <div className="truncate text-sm font-semibold">📱 {d.customer || "Walk-in"}</div>
+                    <div className="text-[11px] text-slate-500">{itemsCount} items · {money(total)}</div>
+                    <div className="text-[11px] text-slate-400">{dt.toLocaleDateString()} · {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
                   </div>
                   <Button size="sm" onClick={() => onLoad(d.id)}>Load</Button>
                   <Button size="sm" variant="outline" title="Delete draft" onClick={() => onRemove(d.id)}><Trash2 className="h-3.5 w-3.5" /></Button>

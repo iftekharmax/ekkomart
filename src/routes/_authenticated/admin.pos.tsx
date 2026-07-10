@@ -49,11 +49,18 @@ function PosPage() {
   const quickAddFn = useServerFn(createPosQuickProduct);
   const historyFn = useServerFn(listPosTodaySales);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historySearch, setHistorySearch] = useState("");
   const historyQ = useQuery({
     queryKey: ["pos-today-sales"],
     queryFn: () => historyFn({}) as Promise<{ rows: { id: string; total: number; created_at: string; payment_method: string; customer: string | null; items: { name: string; qty: number; price: number }[]; quantity: number }[]; total: number; count: number }>,
     enabled: historyOpen,
   });
+  const filteredHistoryRows = useMemo(() => {
+    const rows = historyQ.data?.rows ?? [];
+    const q = historySearch.trim().toLowerCase();
+    const filtered = q ? rows.filter((r) => (r.customer ?? "").toLowerCase().includes(q)) : rows.slice();
+    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [historyQ.data, historySearch]);
 
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");

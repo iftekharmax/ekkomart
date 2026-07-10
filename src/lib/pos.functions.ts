@@ -26,15 +26,49 @@ export const posSearchProducts = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const sb = publicClient();
     const q = (data.q ?? "").trim();
-    let query = sb.from("products").select("id,name,sku,barcode,price,stock,img,unit").order("name").limit(data.limit);
+    let query = sb.from("products")
+      .select("id,name,sku,barcode,price,stock,img,unit,product_type, product_variations(id,name,sku,barcode,price,stock,image_url,is_active)")
+      .order("name").limit(data.limit);
     if (q) {
-      // barcode / sku exact-ish first, then name ilike
-      query = query.or(`name.ilike.%${q}%,sku.ilike.%${q}%,barcode.ilike.%${q}%`);
+      const esc = q.replace(/[,()"']/g, " ");
+      query = query.or(
+        `name.ilike.%${esc}%,sku.ilike.%${esc}%,barcode.ilike.%${esc}%,` +
+        `product_variations.name.ilike.%${esc}%,product_variations.sku.ilike.%${esc}%,product_variations.barcode.ilike.%${esc}%`,
+      );
     }
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    const out: any[] = [];
+    for (const p of (rows ?? []) as any[]) {
+      const vars = (p.product_variations ?? []) as any[];
+      const isVariable = p.product_type === "variable" || vars.length > 0;
+      if (isVariable) {
+        for (const v of vars) {
+          if (v.is_active === false) continue;
+          out.push({
+            id: v.id,
+            product_id: p.id,
+            variation_id: v.id,
+            name: `${p.name} - ${v.name}`,
+            sku: v.sku ?? p.sku ?? null,
+            barcode: v.barcode ?? null,
+            price: Number(v.price ?? p.price) || 0,
+            stock: v.stock,
+            img: v.image_url ?? p.img ?? null,
+            unit: p.unit ?? null,
+          });
+        }
+      } else {
+        out.push({
+          id: p.id, product_id: p.id, variation_id: null,
+          name: p.name, sku: p.sku, barcode: p.barcode,
+          price: Number(p.price) || 0, stock: p.stock, img: p.img, unit: p.unit,
+        });
+      }
+    }
+    return out;
   });
+
 
 const quickProductInput = z.object({
   name: z.string().min(1),

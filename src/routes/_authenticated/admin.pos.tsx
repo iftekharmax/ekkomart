@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Minus, Plus, Trash2, Search, ScanLine, ShoppingCart, Wallet, X,
-  Calculator as CalcIcon, Save, FileText, Delete,
+  Calculator as CalcIcon, Save, FileText, Delete, Maximize2, Minimize2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -306,8 +306,25 @@ function PosPage() {
 
 
 
+  const posRootRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await posRootRef.current?.requestFullscreen?.();
+      } else {
+        await document.exitFullscreen?.();
+      }
+    } catch (e) { console.error(e); }
+  };
+
   return (
-    <div className="-m-4 grid gap-4 p-4 sm:-m-6 sm:p-6 lg:-m-8 lg:h-[calc(100dvh-2rem)] lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden lg:p-6">
+    <div ref={posRootRef} className="-m-4 grid gap-4 bg-slate-50 p-4 dark:bg-slate-950 sm:-m-6 sm:p-6 lg:-m-8 lg:h-[calc(100dvh-2rem)] lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden lg:p-6">
       {/* LEFT: Scan/Search + Cart items summary */}
       <section className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         {/* Scanner header */}
@@ -316,10 +333,20 @@ function PosPage() {
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-md">
               <ScanLine className="h-5 w-5" />
             </span>
-            <div>
+            <div className="flex-1">
               <div className="text-sm font-bold">Scan or search a product</div>
               <div className="text-xs text-slate-500">Use a barcode scanner, or type a name / SKU / barcode</div>
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={toggleFullscreen}
+              title={isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              <span className="ml-1 hidden sm:inline">{isFullscreen ? "Exit" : "Fullscreen"}</span>
+            </Button>
           </div>
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />

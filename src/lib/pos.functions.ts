@@ -1,91 +1,14 @@
 // POS server functions — product search + sale creation reusing orders/order_items.
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-function publicClient() {
-  return createClient<Database>(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_PUBLISHABLE_KEY!,
-    { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-  );
-}
-
-async function assertAdmin(context: { supabase: any; userId: string }) {
-  const { data, error } = await context.supabase
-    .from("user_roles").select("role").eq("user_id", context.userId).eq("role", "admin").maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden: admin role required");
-}
+import { assertAdmin, searchPosProducts } from "./pos.server";
 
 export const posSearchProducts = createServerFn({ method: "GET" })
   .inputValidator((d: { q?: string; limit?: number }) =>
     z.object({ q: z.string().optional().default(""), limit: z.number().int().min(1).max(60).optional().default(24) }).parse(d))
   .handler(async ({ data }) => {
-    const sb = publicClient();
-    const q = (data.q ?? "").trim();
-    const esc = q.replace(/[,()"']/g, " ");
-
-    const productIds = new Set<string>();
-    if (q) {
-      const { data: pRows } = await sb.from("products").select("id")
-        .or(`name.ilike.%${esc}%,sku.ilike.%${esc}%,barcode.ilike.%${esc}%`).limit(data.limit);
-      for (const r of (pRows ?? []) as any[]) productIds.add(r.id);
-      const { data: vRows } = await (sb.from("product_variations" as any) as any).select("product_id")
-        .or(`name.ilike.%${esc}%,sku.ilike.%${esc}%,barcode.ilike.%${esc}%`).limit(data.limit);
-      for (const r of (vRows ?? []) as any[]) if (r.product_id) productIds.add(r.product_id);
-      if (productIds.size === 0) return [];
-    }
-
-    let query = sb.from("products")
-      .select("id,name,sku,barcode,price,stock,img,unit,product_type, product_variations(id,name,sku,barcode,price,stock,image_url,is_active,position)")
-      .order("name").limit(data.limit);
-    if (q) query = query.in("id", Array.from(productIds));
-    const { data: rows, error } = await query;
-    if (error) throw new Error(error.message);
-
-    const ql = q.toLowerCase();
-    const out: any[] = [];
-    for (const p of (rows ?? []) as any[]) {
-      const vars = ((p.product_variations ?? []) as any[])
-        .filter((v) => v.is_active !== false)
-        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-      const isVariable = p.product_type === "variable" || vars.length > 0;
-      if (isVariable) {
-        // If query matched only the parent (not the variation name/sku/barcode),
-        // still show all variations for that parent.
-        const matchesVar = (v: any) => !ql || [v.name, v.sku, v.barcode].some((f) => String(f ?? "").toLowerCase().includes(ql));
-        const parentMatches = !ql || [p.name, p.sku, p.barcode].some((f) => String(f ?? "").toLowerCase().includes(ql));
-        const list = parentMatches ? vars : vars.filter(matchesVar);
-        for (const v of list) {
-          out.push({
-            id: v.id,
-            product_id: p.id,
-            variation_id: v.id,
-            parent_name: p.name,
-            variation_name: v.name,
-            name: `${p.name} - ${v.name}`,
-            sku: v.sku ?? null,
-            barcode: v.barcode ?? null,
-            price: Number(v.price ?? p.price) || 0,
-            stock: v.stock,
-            img: v.image_url ?? p.img ?? null,
-            unit: p.unit ?? null,
-          });
-        }
-      } else {
-        out.push({
-          id: p.id, product_id: p.id, variation_id: null,
-          parent_name: p.name, variation_name: null,
-          name: p.name, sku: p.sku, barcode: p.barcode,
-          price: Number(p.price) || 0, stock: p.stock, img: p.img, unit: p.unit,
-        });
-      }
-
-    }
-    return out.slice(0, data.limit);
+    return searchPosProducts(data);
   });
 
 
@@ -117,6 +40,8 @@ const saleInput = z.object({
     product_id: z.string().uuid(),
     variation_id: z.string().uuid().nullable().optional(),
     name: z.string().min(1),
+    parent_name: z.string().nullable().optional(),
+    variation_name: z.string().nullable().optional(),
     price: z.number().nonnegative(),
     qty: z.number().int().min(1),
     img: z.string().nullable().optional(),
@@ -138,7 +63,12 @@ export const createPosSale = createServerFn({ method: "POST" })
       _items: data.items.map((it) => ({
         product_id: it.product_id,
         variation_id: it.variation_id ?? null,
-        name: it.name, price: it.price, qty: it.qty, img: it.img ?? null,
+        name: it.name,
+        parent_name: it.parent_name ?? null,
+        variation_name: it.variation_name ?? null,
+        price: it.price,
+        qty: it.qty,
+        img: it.img ?? null,
       })),
       _discount: data.discount,
       _tax: data.tax,

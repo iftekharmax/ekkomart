@@ -261,13 +261,16 @@ function PosPage() {
   });
 
   function saveDraft() {
-    if (cart.length === 0) { toast.error("Cart is empty"); return; }
-    const defaultName = `${customer || "Walk-in"} · ${cart.length} items · ${money(subtotal)}`;
-    const name = window.prompt("Name this draft", defaultName)?.trim() || defaultName;
+    if (cart.length === 0) { toast.error("Cart is empty — nothing to draft"); return; }
+    const first = cart[0];
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const extra = cart.length > 1 ? ` +${cart.length - 1}` : "";
+    const name = `${first.name}${extra} · ${money(Number(first.price))} · ${time}`;
     const d: Draft = { id: crypto.randomUUID(), at: Date.now(), name, cart, customer, discount, tax, method };
     const next = [d, ...drafts].slice(0, 20);
     setDrafts(next); persistDrafts(next);
     clearAll();
+    clearAutosave();
     toast.success(`Draft saved: ${name}`);
   }
   function loadDraft(id: string) {
@@ -278,11 +281,13 @@ function PosPage() {
     const next = drafts.filter((x) => x.id !== id);
     setDrafts(next); persistDrafts(next);
     setDraftsOpen(false);
-    toast.success("Draft loaded");
+    toast.success(`Loaded draft: ${d.name ?? d.customer}`);
   }
   function removeDraft(id: string) {
+    const d = drafts.find((x) => x.id === id);
     const next = drafts.filter((x) => x.id !== id);
     setDrafts(next); persistDrafts(next);
+    toast.success(`Deleted draft${d?.name ? `: ${d.name}` : ""}`);
   }
 
 

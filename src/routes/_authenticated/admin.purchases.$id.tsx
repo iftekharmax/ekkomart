@@ -308,10 +308,21 @@ function PurchaseDetail() {
         <DialogContent>
           <DialogHeader><DialogTitle>Pay due — ${due.toFixed(2)}</DialogTitle></DialogHeader>
           <div className="grid gap-3">
+            <div className="rounded-lg bg-muted/40 p-3 text-xs">
+              <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-mono">${total.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">− Returned</span><span className="font-mono">${returnedTotal.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">− Already paid</span><span className="font-mono">${paidTotal.toFixed(2)}</span></div>
+              <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>Remaining due</span><span className="font-mono">${due.toFixed(2)}</span></div>
+            </div>
             <div>
               <Label>Amount</Label>
               <Input type="number" min={0} max={due} step="0.01" value={payAmount}
-                onChange={(e) => setPayAmount(Number(e.target.value) || 0)} autoFocus />
+                onChange={(e) => setPayAmount(Math.min(due, Math.max(0, Number(e.target.value) || 0)))} autoFocus />
+              <p className={`mt-1 text-xs ${payAmount > due ? "text-destructive" : "text-muted-foreground"}`}>
+                {payAmount > due
+                  ? `Exceeds remaining by $${(payAmount - due).toFixed(2)}`
+                  : `Remaining after this payment: $${Math.max(0, due - payAmount).toFixed(2)}`}
+              </p>
             </div>
             <div>
               <Label>Receipt # (optional)</Label>

@@ -687,13 +687,16 @@ function escapeHtml(s: string) {
 // ============ Drafts (localStorage) ============
 type Draft = {
   id: string; at: number; name?: string; cart: CartItem[]; customer: string;
-  discount: number; tax: number; method: "cash" | "card" | "mobile" | "other";
+  discount: number; taxMode: "default" | "free"; method: "cash" | "card" | "mobile" | "other";
 };
 const DRAFTS_KEY = "pos.drafts.v1";
 const AUTOSAVE_KEY = "pos.autosave.v1";
 function loadDrafts(): Draft[] {
   if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(DRAFTS_KEY) || "[]"); } catch { return []; }
+  try {
+    const raw = JSON.parse(localStorage.getItem(DRAFTS_KEY) || "[]") as any[];
+    return raw.map((d) => ({ ...d, taxMode: d.taxMode ?? (Number(d.tax) > 0 ? "default" : "free") }));
+  } catch { return []; }
 }
 function persistDrafts(d: Draft[]) {
   try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(d)); } catch { /* ignore */ }

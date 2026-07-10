@@ -118,8 +118,13 @@ export const createPurchase = createServerFn({ method: "POST" })
 
 export const payPurchaseDue = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string; amount: number }) =>
-    z.object({ id: z.string().uuid(), amount: z.number().positive() }).parse(d))
+  .inputValidator((d: { id: string; amount: number; receipt_no?: string | null; note?: string | null }) =>
+    z.object({
+      id: z.string().uuid(),
+      amount: z.number().positive(),
+      receipt_no: z.string().trim().max(100).nullable().optional(),
+      note: z.string().trim().max(1000).nullable().optional(),
+    }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { data: row, error } = await (context.supabase.from("purchases" as any) as any)
@@ -133,6 +138,14 @@ export const payPurchaseDue = createServerFn({ method: "POST" })
     const { error: e2 } = await (context.supabase.from("purchases" as any) as any)
       .update({ paid: newPaid } as any).eq("id", data.id);
     if (e2) throw new Error(e2.message);
+    const { error: e3 } = await (context.supabase.from("purchase_payments" as any) as any).insert({
+      purchase_id: data.id,
+      amount: data.amount,
+      receipt_no: data.receipt_no?.trim() || null,
+      note: data.note?.trim() || null,
+      created_by: context.userId,
+    } as any);
+    if (e3) throw new Error(e3.message);
     return { ok: true, paid: newPaid };
   });
 

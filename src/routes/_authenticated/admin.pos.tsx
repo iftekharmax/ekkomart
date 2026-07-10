@@ -32,6 +32,7 @@ const money = (n: number) => `৳${n.toFixed(2)}`;
 function PosPage() {
   const searchFn = useServerFn(posSearchProducts);
   const saleFn = useServerFn(createPosSale);
+  const quickAddFn = useServerFn(createPosQuickProduct);
 
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -52,9 +53,15 @@ function PosPage() {
   const [method, setMethod] = useState<"cash" | "card" | "mobile" | "other">("cash");
   const [customer, setCustomer] = useState("");
   const [receipt, setReceipt] = useState<null | { id: string; total: number }>(null);
+  const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState<null | { code: string }>(null);
+  const [quickName, setQuickName] = useState("");
+  const [quickPrice, setQuickPrice] = useState<number>(0);
+  const [quickStock, setQuickStock] = useState<number>(1);
   const searchRef = useRef<HTMLInputElement>(null);
   const lastKeyTimeRef = useRef<number>(0);
   const bufferRef = useRef<string>("");
+  const justAddedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { searchRef.current?.focus(); }, []);
 

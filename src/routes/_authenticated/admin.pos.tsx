@@ -53,7 +53,7 @@ function PosPage() {
   const [paid, setPaid] = useState(0);
   const [method, setMethod] = useState<"cash" | "card" | "mobile" | "other">("cash");
   const [customer, setCustomer] = useState("");
-  const [drafts, setDrafts] = useState<Array<{ id: string; at: number; cart: CartItem[]; customer: string; discount: number; tax: number; method: typeof methodDefault }>>(() => loadDrafts());
+  const [drafts, setDrafts] = useState<Draft[]>(() => loadDrafts());
   const [draftsOpen, setDraftsOpen] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);

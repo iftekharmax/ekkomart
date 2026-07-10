@@ -66,13 +66,42 @@ function PurchasesPage() {
         </Button>
       </div>
 
+      {/* Filters */}
+      <div className="mb-4 grid gap-2 rounded-xl border bg-card p-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Invoice no." className="pl-8" />
+        </div>
+        <select
+          value={supplier}
+          onChange={(e) => setSupplier(e.target.value)}
+          className="h-9 rounded-md border bg-background px-3 text-sm"
+        >
+          <option value="">All suppliers</option>
+          {suppliers.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} aria-label="From date" />
+        <div className="flex gap-2">
+          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} aria-label="To date" className="flex-1" />
+          {hasFilters && (
+            <Button variant="outline" size="sm" onClick={clearFilters} title="Clear filters">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
       {/* Mobile card list */}
       <div className="space-y-3 md:hidden">
         {isLoading ? (
-          <div className="rounded-xl border bg-card px-4 py-8 text-center text-sm text-muted-foreground">Loading…</div>
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-32 animate-pulse rounded-xl border bg-muted/40" />
+          ))
         ) : (rows as any[]).length === 0 ? (
-          <div className="rounded-xl border bg-card px-4 py-8 text-center text-sm text-muted-foreground">No purchases yet.</div>
-        ) : (rows as any[]).map((p) => {
+          <EmptyState onNew={() => navigate({ to: "/admin/purchases/new" })} />
+        ) : filtered.length === 0 ? (
+          <NoResults onClear={clearFilters} />
+        ) : filtered.map((p) => {
           const due = Math.max(0, Number(p.total) - Number(p.paid ?? 0));
           const items = (p.items ?? []) as any[];
           const totalQty = items.reduce((s, it) => s + Number(it.quantity ?? 0), 0);

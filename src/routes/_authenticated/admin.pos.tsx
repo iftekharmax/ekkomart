@@ -682,7 +682,7 @@ function loadDrafts(): Draft[] {
 function persistDrafts(d: Draft[]) {
   try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(d)); } catch { /* ignore */ }
 }
-type AutosaveShape = Omit<Draft, "id" | "at" | "name">;
+type AutosaveShape = Omit<Draft, "id" | "at" | "name"> & { version?: number; at?: number };
 function loadAutosave(): AutosaveShape | null {
   if (typeof window === "undefined") return null;
   try { const raw = localStorage.getItem(AUTOSAVE_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }

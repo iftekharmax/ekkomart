@@ -33,6 +33,19 @@ type CartItem = Product & { qty: number };
 
 
 const money = (n: number) => `৳${n.toFixed(2)}`;
+const itemParentLabel = (item: Pick<Product, "name" | "parent_name" | "variation_id">) => (
+  item.variation_id ? (item.parent_name || item.name.split(" - ")[0] || item.name) : item.name
+);
+const itemVariationLabel = (item: Pick<Product, "name" | "parent_name" | "variation_id" | "variation_name">) => {
+  if (!item.variation_id) return null;
+  if (item.variation_name) return item.variation_name;
+  const parent = itemParentLabel(item);
+  return item.name.startsWith(`${parent} - `) ? item.name.slice(parent.length + 3) : item.name;
+};
+const itemFullLabel = (item: Pick<Product, "name" | "parent_name" | "variation_id" | "variation_name">) => {
+  const variation = itemVariationLabel(item);
+  return variation ? `${itemParentLabel(item)} - ${variation}` : item.name;
+};
 const textOrDash = (value: unknown) => {
   if (value == null) return "—";
   const text = String(value).trim();
@@ -139,7 +152,7 @@ function PosPage() {
 
   function addToCart(p: Product) {
     let ok = true;
-    const label = p.variation_id ? p.name : p.name;
+    const label = itemFullLabel(p);
     setCart((prev) => {
       const idx = prev.findIndex((i) => i.id === p.id);
       if (idx >= 0) {
@@ -168,7 +181,7 @@ function PosPage() {
       if (it.id !== id) return [it];
       if (qty <= 0) return [];
       if (it.stock != null && qty > it.stock) {
-        toast.error(`Insufficient stock for “${it.name}”`, { description: `Only ${it.stock} available` });
+        toast.error(`Insufficient stock for “${itemFullLabel(it)}”`, { description: `Only ${it.stock} available` });
         return [it];
       }
       return [{ ...it, qty }];
@@ -278,14 +291,18 @@ function PosPage() {
       const items = cart.map((c) => ({
         product_id: String(c.product_id ?? c.id),
         variation_id: c.variation_id ?? null,
-        name: String(c.name),
+        name: itemFullLabel(c),
+        parent_name: c.parent_name ?? null,
+        variation_name: c.variation_name ?? null,
         price: Number(c.price) || 0,
-        qty: Math.max(1, Math.floor(Number(c.qty) || 1)),
+        qty: Math.floor(Number(c.qty) || 0),
         img: c.img ?? null,
       }));
+      const invalid = items.find((it) => it.qty < 1);
+      if (invalid) throw new Error(`Invalid quantity for ${invalid.name}`);
 
       const snapshot = {
-        items: items.map((i) => ({ name: i.name, price: i.price, qty: i.qty })),
+        items: items.map((i) => ({ name: i.name, parent_name: i.parent_name, variation_name: i.variation_name, price: i.price, qty: i.qty })),
         subtotal, discount: Number(discount) || 0, tax: Number(tax) || 0, total,
         paid: Number(paid) || 0, change, method, customer: customer || "Walk-in",
       };
@@ -303,7 +320,11 @@ function PosPage() {
         description: `Invoice #${res.id.slice(0, 8).toUpperCase()} — printing receipt`,
       });
     },
-    onError: (e: Error) => toast.error("Payment failed", { description: e.message || "Sale could not be completed" }),
+    onError: (e: Error) => {
+      toast.error("Payment failed — cart restored", {
+        description: e.message || "Stock was not changed. Fix the cart and retry.",
+      });
+    },
   });
 
   function saveDraft() {
@@ -535,7 +556,14 @@ function PosPage() {
                 {cart.map((it) => (
                   <li key={it.id} onClick={() => setSelectedCartId(it.id)} className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition-all ${selectedCartId === it.id ? "border-primary bg-primary/[0.06] shadow-md shadow-primary/10 ring-1 ring-primary/30" : "border-slate-200/80 bg-white hover:border-primary/40 hover:shadow-sm dark:border-slate-800 dark:bg-slate-950"}`}>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">{it.name}</div>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <div className="truncate text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">{itemParentLabel(it)}</div>
+                        {itemVariationLabel(it) ? (
+                          <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                            {itemVariationLabel(it)}
+                          </span>
+                        ) : null}
+                      </div>
                       <div className="mt-0.5 text-xs tabular-nums text-slate-500">{money(Number(it.price))} × {it.qty} = <b className="text-slate-800 dark:text-slate-100">{money(Number(it.price) * it.qty)}</b></div>
                     </div>
                     <div className="flex items-center gap-1 rounded-xl bg-slate-100/70 p-0.5 dark:bg-slate-800/60">
@@ -830,7 +858,7 @@ function Row({ label, value }: { label: React.ReactNode; value: React.ReactNode 
 
 type ReceiptData = {
   id: string;
-  items: { name: string; price: number; qty: number }[];
+  items: { name: string; parent_name?: string | null; variation_name?: string | null; price: number; qty: number }[];
   subtotal: number; discount: number; tax: number; total: number;
   paid: number; change: number; method: string; customer: string;
 };
@@ -838,12 +866,16 @@ type ReceiptData = {
 function printThermalReceipt(r: ReceiptData) {
   const win = window.open("", "_blank", "width=380,height=720");
   if (!win) return;
-  const rows = r.items.map((it, i) => `
+  const rows = r.items.map((it, i) => {
+    const title = it.parent_name && it.variation_name ? it.parent_name : it.name;
+    const variation = it.parent_name && it.variation_name ? `<div class="v">${escapeHtml(it.variation_name)}</div>` : "";
+    return `
     <tr class="it">
       <td class="idx">${i + 1}</td>
-      <td class="n"><div class="nm">${escapeHtml(it.name)}</div><div class="m">${it.qty} × ৳${it.price.toFixed(2)}</div></td>
+      <td class="n"><div class="nm">${escapeHtml(title)}</div>${variation}<div class="m">${it.qty} × ৳${it.price.toFixed(2)}</div></td>
       <td class="a">৳${(it.qty * it.price).toFixed(2)}</td>
-    </tr>`).join("");
+    </tr>`;
+  }).join("");
   const now = new Date();
   const dt = now.toLocaleString();
   const itemsCount = r.items.reduce((s, it) => s + it.qty, 0);
@@ -868,6 +900,7 @@ function printThermalReceipt(r: ReceiptData) {
     td.idx { width:16px; color:#555; font-size:10px; }
     td.a { text-align:right; white-space:nowrap; padding-left:6px; font-weight:700; }
     .nm { font-weight:700; line-height:1.25; }
+    .v { display:inline-block; margin-top:2px; border:1px solid #000; border-radius:999px; padding:1px 6px; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; }
     .m { color:#444; font-size:10px; margin-top:1px; }
     .row { display:flex; justify-content:space-between; font-size:12px; padding:2px 0; }
     .row.strong { font-weight:700; }

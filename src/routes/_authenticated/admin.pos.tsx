@@ -647,17 +647,27 @@ function PosPage() {
                   <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-900">
                     <tr>
                       <th className="px-3 py-2 text-left">Time</th>
-                      <th className="px-3 py-2 text-left">Order</th>
-                      <th className="px-3 py-2 text-left">Method</th>
+                      <th className="px-3 py-2 text-left">Customer</th>
+                      <th className="px-3 py-2 text-left">Items</th>
+                      <th className="px-3 py-2 text-right">Qty</th>
                       <th className="px-3 py-2 text-right">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {historyQ.data!.rows.map((r) => (
-                      <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
-                        <td className="px-3 py-2">{new Date(r.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
-                        <td className="px-3 py-2 font-mono text-[11px]">{r.id.slice(0, 8)}</td>
-                        <td className="px-3 py-2 capitalize">{r.payment_method}</td>
+                      <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800 align-top">
+                        <td className="px-3 py-2 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                        <td className="px-3 py-2">{r.customer || "—"}</td>
+                        <td className="px-3 py-2">
+                          <div className="space-y-0.5">
+                            {r.items.map((it, i) => (
+                              <div key={i} className="text-[11px] text-slate-600 dark:text-slate-300">
+                                {it.name} <span className="text-slate-400">× {it.qty}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-right font-medium">{r.quantity}</td>
                         <td className="px-3 py-2 text-right font-semibold">{money(r.total)}</td>
                       </tr>
                     ))}

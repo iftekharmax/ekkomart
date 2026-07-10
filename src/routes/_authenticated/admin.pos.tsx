@@ -115,9 +115,10 @@ function PosPage() {
   });
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
+    <div className="-m-4 grid gap-4 p-4 sm:-m-6 sm:p-6 lg:-m-8 lg:h-[calc(100dvh-2rem)] lg:grid-cols-[minmax(0,1fr)_400px] lg:overflow-hidden lg:p-6">
       {/* LEFT: Products */}
-      <section className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <section className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="border-b border-slate-200 bg-gradient-to-r from-primary/5 to-transparent p-4 dark:border-slate-800">
         <div className="mb-3 flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />

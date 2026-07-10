@@ -193,13 +193,22 @@ export const getPosSale = createServerFn({ method: "GET" })
     await assertAdmin(context);
     const { data: o, error } = await context.supabase
       .from("orders")
-      .select("id,total,note,created_at, order_items(id,name,qty,price,img)")
+      .select("id,total,note,created_at,user_id, order_items(id,name,qty,price,img)")
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!o) throw new Error("Sale not found");
     let meta: any = {};
     try { meta = JSON.parse((o as any).note ?? "{}"); } catch {}
+
+    let staff: string | null = null;
+    const uid = (o as any).user_id as string | null;
+    if (uid) {
+      const { data: prof } = await context.supabase
+        .from("profiles").select("full_name").eq("id", uid).maybeSingle();
+      staff = (prof as any)?.full_name ?? null;
+    }
+
     return {
       id: (o as any).id as string,
       invoice: `INV-${String((o as any).id).slice(0, 8).toUpperCase()}`,
@@ -211,6 +220,7 @@ export const getPosSale = createServerFn({ method: "GET" })
       paid: Number(meta.paid) || 0,
       payment_method: (meta.payment_method as string) ?? "cash",
       customer: (meta.customer as string) ?? null,
+      staff,
       items: ((o as any).order_items ?? []).map((it: any) => ({
         id: it.id, name: String(it.name ?? ""), qty: Number(it.qty) || 0, price: Number(it.price) || 0, img: it.img ?? null,
       })),

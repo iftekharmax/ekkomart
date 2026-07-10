@@ -136,7 +136,17 @@ function PurchaseDetail() {
       <div className="mt-6 overflow-hidden rounded-xl border bg-card">
         <div className="border-b bg-muted/40 px-4 py-3 text-sm font-semibold">Payment history</div>
         {(payments ?? []).length === 0 ? (
-          <div className="px-4 py-6 text-sm text-muted-foreground">No payments recorded yet.</div>
+          <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+            <div className="grid h-12 w-12 place-items-center rounded-full bg-muted">
+              <Receipt className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
+            {due > 0 && (
+              <Button size="sm" onClick={() => { setPayAmount(due); setPayOpen(true); }}>
+                <DollarSign className="mr-2 h-4 w-4" /> Record first payment
+              </Button>
+            )}
+          </div>
         ) : (
           <div className="overflow-x-auto">
           <table className="w-full min-w-[520px] text-sm">

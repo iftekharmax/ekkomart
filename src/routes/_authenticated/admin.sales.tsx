@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Eye, Trash2, Search, Receipt, Printer, Calendar, X, TrendingUp, ShoppingBag,
-  Download, ChevronLeft, ChevronRight, ArrowRight, Loader2,
+  Download, ChevronLeft, ChevronRight, Loader2,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { printThermalReceipt } from "@/lib/thermal-print";
 import {
@@ -362,16 +363,17 @@ function SalesPage() {
       <SaleDetailsDialog
         id={viewId}
         onClose={() => setViewId(null)}
-        onOpenFull={(id) => nav({ to: "/admin/sales/$id", params: { id } })}
         getFn={getFn}
       />
+
     </div>
   );
 }
 
 function SaleDetailsDialog({
-  id, onClose, onOpenFull, getFn,
-}: { id: string | null; onClose: () => void; onOpenFull: (id: string) => void; getFn: (args: { data: { id: string } }) => Promise<Awaited<ReturnType<typeof getPosSale>>> }) {
+  id, onClose, getFn,
+}: { id: string | null; onClose: () => void; getFn: (args: { data: { id: string } }) => Promise<Awaited<ReturnType<typeof getPosSale>>> }) {
+
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-sale", id],
     queryFn: () => getFn({ data: { id: id! } }),
@@ -461,15 +463,11 @@ function SaleDetailsDialog({
         <DialogFooter className="border-t bg-muted/20 px-6 py-3">
           <Button variant="outline" onClick={onClose}>Close</Button>
           {data && (
-            <>
-              <Button variant="outline" onClick={() => printThermalReceipt(data)}>
-                <Printer className="mr-1 h-4 w-4" />Print
-              </Button>
-              <Button onClick={() => onOpenFull(data.id)}>
-                Open full page<ArrowRight className="ml-1 h-4 w-4" />
-              </Button>
-            </>
+            <Button variant="outline" onClick={() => printThermalReceipt(data)}>
+              <Printer className="mr-1 h-4 w-4" />Print
+            </Button>
           )}
+
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -76,9 +76,8 @@ function PosPage() {
       setCart(auto.cart.map((c) => ({ ...c, price: Number(c.price), qty: Number(c.qty) })));
       setCustomer(auto.customer ?? "");
       setDiscount(Number(auto.discount) || 0);
-      setTax(Number(auto.tax) || 0);
+      setTaxMode(auto.taxMode ?? "default");
       setMethod(auto.method ?? "cash");
-      toast.message("Draft auto-restored", { description: "Continuing your unsaved cart" });
     }
     hydratedRef.current = true;
     searchRef.current?.focus();
@@ -95,13 +94,14 @@ function PosPage() {
       const version = ++autosaveVersionRef.current;
       const existing = loadAutosave();
       if (existing && (existing.version ?? 0) > version) return; // don't overwrite newer
-      persistAutosave({ cart, customer, discount, tax, method, version, at: Date.now() });
-      toast.message("Draft auto-saved", { duration: 900 });
+      persistAutosave({ cart, customer, discount, taxMode, method, version, at: Date.now() });
     }, 800);
     return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
-  }, [cart, customer, discount, tax, method]);
+  }, [cart, customer, discount, taxMode, method]);
 
   const subtotal = useMemo(() => cart.reduce((s, it) => s + it.price * it.qty, 0), [cart]);
+  const TAX_RATE = 0.08;
+  const tax = taxMode === "default" ? Math.round((subtotal - discount) * TAX_RATE * 100) / 100 : 0;
   const total = Math.max(0, subtotal - discount + tax);
   const change = Math.max(0, paid - total);
 

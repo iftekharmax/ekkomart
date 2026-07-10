@@ -248,6 +248,9 @@ function NewPurchasePage() {
           <div className="mt-2 flex justify-between border-t pt-3 text-lg font-bold">
             <span>Total</span><span>${total.toFixed(2)}</span>
           </div>
+          <div className={`flex justify-between text-sm font-semibold ${(total - paid) > 0 ? "text-destructive" : "text-green-600"}`}>
+            <span>Due</span><span>${Math.max(0, total - paid).toFixed(2)}</span>
+          </div>
         </div>
       </div>
 

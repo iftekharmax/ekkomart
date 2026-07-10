@@ -50,8 +50,21 @@ function PurchaseDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) return <div className="text-muted-foreground">Loading…</div>;
-  if (!data) return <div className="text-muted-foreground">Not found.</div>;
+  if (isLoading) return (
+    <div className="space-y-4">
+      <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+      <div className="h-4 w-64 animate-pulse rounded bg-muted" />
+      <div className="h-40 animate-pulse rounded-xl bg-muted" />
+    </div>
+  );
+  if (!data) return (
+    <div className="rounded-xl border bg-card p-10 text-center">
+      <p className="text-sm text-muted-foreground">Purchase not found. It may have been deleted.</p>
+      <Button className="mt-4" size="sm" variant="outline" onClick={() => navigate({ to: "/admin/purchases" })}>
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back to purchases
+      </Button>
+    </div>
+  );
   const { header, items, payments } = data as any;
   const due = Math.max(0, Number(header.total) - Number(header.paid));
   const status = due <= 0 ? "Paid" : Number(header.paid) > 0 ? "Partial" : "Unpaid";

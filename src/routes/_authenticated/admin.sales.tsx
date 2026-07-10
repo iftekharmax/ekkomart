@@ -419,7 +419,7 @@ function SaleDetailsDialog({
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <MetaCell label="Customer" value={data.customer || "Walk-in"} />
                 <MetaCell label="Payment" value={<span className="capitalize">{data.payment_method}</span>} />
-                <MetaCell label="Items" value={String(data.items.reduce((s: number, it: { qty: number }) => s + it.qty, 0))} />
+                <MetaCell label="Staff" value={(data as any).staff || <span className="text-muted-foreground">—</span>} />
                 <MetaCell label="Status" value={<span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${statusCls}`}>{status}</span>} />
               </div>
 
@@ -434,28 +434,53 @@ function SaleDetailsDialog({
                     </tr>
                   </thead>
                   <tbody>
-                    {data.items.map((it: { id: string; name: string; qty: number; price: number }) => (
-                      <tr key={it.id} className="border-t">
-                        <td className="px-3 py-2 font-medium">{it.name}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{money(it.price)}</td>
-                        <td className="px-3 py-2 text-right tabular-nums">{it.qty}</td>
-                        <td className="px-3 py-2 text-right font-semibold tabular-nums">{money(it.price * it.qty)}</td>
-                      </tr>
-                    ))}
+                    {data.items.map((it: { id: string; name: string; qty: number; price: number }) => {
+                      const sepIdx = it.name.indexOf(" - ");
+                      const baseName = sepIdx > 0 ? it.name.slice(0, sepIdx) : it.name;
+                      const variation = sepIdx > 0 ? it.name.slice(sepIdx + 3).trim() : "";
+                      return (
+                        <tr key={it.id} className="border-t">
+                          <td className="px-3 py-2 font-medium">
+                            <div>{baseName}</div>
+                            {variation && (
+                              <div className="mt-0.5 inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                                {variation}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{money(it.price)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{it.qty}</td>
+                          <td className="px-3 py-2 text-right font-semibold tabular-nums">{money(it.price * it.qty)}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
 
-              <div className="ml-auto grid w-full max-w-sm gap-1 rounded-xl border bg-muted/20 p-4 text-sm">
-                <SumRow label="Subtotal" value={money(data.subtotal)} />
-                {data.discount ? <SumRow label="Discount" value={`− ${money(data.discount)}`} /> : null}
-                {data.tax ? <SumRow label="Tax" value={`+ ${money(data.tax)}`} /> : null}
-                <div className="mt-1 flex items-center justify-between border-t pt-2 text-base font-bold">
-                  <span>Total</span><span className="tabular-nums text-primary">{money(data.total)}</span>
-                </div>
-                <SumRow label="Paid" value={money(data.paid)} />
-                <SumRow label="Change" value={money(Math.max(0, data.paid - data.total))} />
-              </div>
+              {(() => {
+                const sub = data.subtotal || 0;
+                const discPct = sub > 0 ? (data.discount / sub) * 100 : 0;
+                const taxPct = sub > 0 ? (data.tax / sub) * 100 : 0;
+                return (
+                  <div className="ml-auto grid w-full max-w-sm gap-1 rounded-xl border bg-muted/20 p-4 text-sm">
+                    <SumRow label="Subtotal" value={money(sub)} />
+                    <SumRow
+                      label={`Discount${data.discount ? ` (${discPct.toFixed(discPct % 1 ? 1 : 0)}%)` : ""}`}
+                      value={data.discount ? `− ${money(data.discount)}` : <span className="font-semibold text-emerald-600">FREE</span>}
+                    />
+                    <SumRow
+                      label={`Tax${data.tax ? ` (${taxPct.toFixed(taxPct % 1 ? 1 : 0)}%)` : ""}`}
+                      value={data.tax ? `+ ${money(data.tax)}` : <span className="font-semibold text-emerald-600">FREE</span>}
+                    />
+                    <div className="mt-1 flex items-center justify-between border-t pt-2 text-base font-bold">
+                      <span>Total</span><span className="tabular-nums text-primary">{money(data.total)}</span>
+                    </div>
+                    <SumRow label="Paid" value={money(data.paid)} />
+                    <SumRow label="Change" value={money(Math.max(0, data.paid - data.total))} />
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

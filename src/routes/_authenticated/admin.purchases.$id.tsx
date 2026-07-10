@@ -1,10 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getPurchase, deletePurchase } from "@/lib/purchases.functions";
+import { getPurchase, deletePurchase, payPurchaseDue } from "@/lib/purchases.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ArrowLeft, Trash2, DollarSign } from "lucide-react";
 import { toast } from "sonner";
+import { useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/admin/purchases/$id")({
   head: () => ({ meta: [{ title: "Purchase — Admin" }] }),
@@ -17,6 +21,7 @@ function PurchaseDetail() {
   const navigate = useNavigate();
   const getFn = useServerFn(getPurchase);
   const delFn = useServerFn(deletePurchase);
+  const payFn = useServerFn(payPurchaseDue);
   const { data, isLoading } = useQuery({ queryKey: ["admin-purchase", id], queryFn: () => getFn({ data: { id } }) });
   const del = useMutation({
     mutationFn: () => delFn({ data: { id } }),
@@ -28,9 +33,23 @@ function PurchaseDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [payOpen, setPayOpen] = useState(false);
+  const [payAmount, setPayAmount] = useState(0);
+  const pay = useMutation({
+    mutationFn: () => payFn({ data: { id, amount: Number(payAmount) } }),
+    onSuccess: () => {
+      toast.success("Payment recorded");
+      qc.invalidateQueries({ queryKey: ["admin-purchase", id] });
+      qc.invalidateQueries({ queryKey: ["admin-purchases"] });
+      setPayOpen(false); setPayAmount(0);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   if (isLoading) return <div className="text-muted-foreground">Loading…</div>;
   if (!data) return <div className="text-muted-foreground">Not found.</div>;
   const { header, items } = data as any;
+  const due = Math.max(0, Number(header.total) - Number(header.paid));
 
   return (
     <div className="max-w-4xl">
@@ -44,9 +63,16 @@ function PurchaseDetail() {
             {header.purchase_date} · {header.supplier?.name ?? "No supplier"}
           </p>
         </div>
-        <Button variant="outline" onClick={() => {
-          if (confirm("Delete purchase? Stock will be decreased.")) del.mutate();
-        }}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
+        <div className="flex gap-2">
+          {due > 0 && (
+            <Button onClick={() => { setPayAmount(due); setPayOpen(true); }}>
+              <DollarSign className="mr-2 h-4 w-4" /> Pay due
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => {
+            if (confirm("Delete purchase? Stock will be decreased.")) del.mutate();
+          }}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border bg-card">
@@ -94,6 +120,25 @@ function PurchaseDetail() {
           <p className="mt-1 text-sm">{header.note}</p>
         </div>
       )}
+
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Pay due — ${due.toFixed(2)}</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <div>
+              <Label>Amount</Label>
+              <Input type="number" min={0} max={due} step="0.01" value={payAmount}
+                onChange={(e) => setPayAmount(Number(e.target.value) || 0)} autoFocus />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
+            <Button onClick={() => pay.mutate()} disabled={pay.isPending || payAmount <= 0 || payAmount > due}>
+              {pay.isPending ? "Saving…" : "Record payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

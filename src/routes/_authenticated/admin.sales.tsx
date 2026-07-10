@@ -2,30 +2,57 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
-import { listPosSales, deletePosSale } from "@/lib/pos.functions";
+import { z } from "zod";
+import { listPosSales, deletePosSale, getPosSale } from "@/lib/pos.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, Trash2, Search, Receipt, Printer, Calendar, X, TrendingUp, ShoppingBag } from "lucide-react";
+import {
+  Eye, Trash2, Search, Receipt, Printer, Calendar, X, TrendingUp, ShoppingBag,
+  Download, ChevronLeft, ChevronRight, ArrowRight,
+} from "lucide-react";
 import { toast } from "sonner";
 import { printThermalReceipt } from "@/lib/thermal-print";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+
+const searchSchema = z.object({
+  q: z.string().optional().default(""),
+  from: z.string().optional().default(""),
+  to: z.string().optional().default(""),
+  page: z.number().int().min(1).optional().default(1),
+});
 
 export const Route = createFileRoute("/_authenticated/admin/sales")({
   head: () => ({ meta: [{ title: "Sales — Admin" }] }),
+  validateSearch: searchSchema,
   component: SalesPage,
 });
 
+const PAGE_SIZE = 15;
 const money = (n: number) => `৳${(Number(n) || 0).toFixed(2)}`;
 const fmtDT = (s: string) => new Date(s).toLocaleString();
 
 function SalesPage() {
   const qc = useQueryClient();
-  const nav = useNavigate();
+  const nav = useNavigate({ from: "/admin/sales" });
+  const { q, from, to, page } = Route.useSearch();
   const listFn = useServerFn(listPosSales);
   const delFn = useServerFn(deletePosSale);
+  const getFn = useServerFn(getPosSale);
 
-  const [q, setQ] = useState("");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [confirmSale, setConfirmSale] = useState<{ id: string; invoice: string } | null>(null);
+  const [viewId, setViewId] = useState<string | null>(null);
+
+  const setSearch = (patch: Partial<{ q: string; from: string; to: string; page: number }>) => {
+    const next = { q, from, to, page, ...patch };
+    if (!("page" in patch)) next.page = 1;
+    nav({ to: ".", search: next });
+  };
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-sales"],
@@ -51,15 +78,48 @@ function SalesPage() {
   const totalQty = filtered.reduce((s, r) => s + r.quantity, 0);
   const hasFilters = !!(q || from || to);
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const curPage = Math.min(page, totalPages);
+  const pageRows = filtered.slice((curPage - 1) * PAGE_SIZE, curPage * PAGE_SIZE);
+
   const del = useMutation({
     mutationFn: (id: string) => delFn({ data: { id } }),
-    onSuccess: async () => {
-      toast.success("Sale deleted — stock restored");
+    onSuccess: async (_res, id) => {
+      const inv = confirmSale?.invoice ?? rows.find((r) => r.id === id)?.invoice ?? "sale";
+      toast.success(`Deleted ${inv} — stock restored`);
+      setConfirmSale(null);
       await qc.invalidateQueries({ queryKey: ["admin-sales"] });
       await refetch();
     },
     onError: (e: Error) => toast.error(e.message || "Failed to delete sale"),
   });
+
+  const exportCsv = () => {
+    if (filtered.length === 0) { toast.error("Nothing to export"); return; }
+    const headers = ["Invoice", "Date", "Customer", "Payment", "Items", "Qty", "Subtotal", "Discount", "Tax", "Total"];
+    const esc = (v: unknown) => {
+      const s = String(v ?? "");
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const lines = [headers.join(",")];
+    for (const r of filtered) {
+      lines.push([
+        r.invoice, new Date(r.created_at).toISOString(), r.customer ?? "Walk-in",
+        r.payment_method, r.items_count, r.quantity,
+        r.subtotal.toFixed(2), r.discount.toFixed(2), r.tax.toFixed(2), r.total.toFixed(2),
+      ].map(esc).join(","));
+    }
+    lines.push("");
+    lines.push(["", "", "", "", "", "TOTAL", "", "", "", totalAmount.toFixed(2)].map(esc).join(","));
+    const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `sales-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filtered.length} sale${filtered.length === 1 ? "" : "s"}`);
+  };
 
   return (
     <div>
@@ -79,37 +139,40 @@ function SalesPage() {
 
       {/* Filter bar */}
       <div className="mb-4 rounded-2xl border bg-card p-3 shadow-sm">
-        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto]">
+        <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto_auto]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => setSearch({ q: e.target.value })}
               placeholder="Search by customer or invoice…"
               className="h-11 rounded-xl pl-9 text-sm font-medium"
               aria-label="Search sales"
             />
             {q && (
-              <button onClick={() => setQ("")} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-muted" aria-label="Clear search">
+              <button onClick={() => setSearch({ q: "" })} className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-muted" aria-label="Clear search">
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
           <div className="relative">
             <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From date" className="h-11 rounded-xl pl-9 sm:w-[170px]" />
+            <Input type="date" value={from} onChange={(e) => setSearch({ from: e.target.value })} aria-label="From date" className="h-11 rounded-xl pl-9 sm:w-[170px]" />
           </div>
           <div className="relative">
             <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="To date" className="h-11 rounded-xl pl-9 sm:w-[170px]" />
+            <Input type="date" value={to} onChange={(e) => setSearch({ to: e.target.value })} aria-label="To date" className="h-11 rounded-xl pl-9 sm:w-[170px]" />
           </div>
           <Button
             variant="outline"
             className="h-11 rounded-xl"
             disabled={!hasFilters}
-            onClick={() => { setQ(""); setFrom(""); setTo(""); }}
+            onClick={() => nav({ to: ".", search: { q: "", from: "", to: "", page: 1 } })}
           >
             <X className="mr-1 h-4 w-4" />Clear
+          </Button>
+          <Button variant="outline" className="h-11 rounded-xl" onClick={exportCsv} aria-label="Export CSV">
+            <Download className="mr-1 h-4 w-4" />Export
           </Button>
         </div>
       </div>
@@ -155,7 +218,7 @@ function SalesPage() {
                     </div>
                   </div>
                 </td></tr>
-              ) : filtered.map((r) => (
+              ) : pageRows.map((r) => (
                 <tr key={r.id} className="border-t transition-colors hover:bg-muted/30">
                   <td className="px-4 py-3">
                     <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
@@ -181,7 +244,7 @@ function SalesPage() {
                         className="h-8 w-8"
                         title="View details"
                         aria-label="View sale"
-                        onClick={() => nav({ to: "/admin/sales/$id", params: { id: r.id } })}
+                        onClick={() => setViewId(r.id)}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -205,9 +268,7 @@ function SalesPage() {
                         title="Delete"
                         aria-label="Delete sale"
                         disabled={del.isPending}
-                        onClick={() => {
-                          if (confirm(`Delete ${r.invoice}? Stock will be restored.`)) del.mutate(r.id);
-                        }}
+                        onClick={() => setConfirmSale({ id: r.id, invoice: r.invoice })}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -218,7 +279,179 @@ function SalesPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {filtered.length > 0 && (
+          <div className="flex flex-col items-center justify-between gap-2 border-t bg-muted/20 px-4 py-3 text-sm sm:flex-row">
+            <div className="text-muted-foreground">
+              Showing <span className="font-semibold text-foreground">{(curPage - 1) * PAGE_SIZE + 1}</span>–
+              <span className="font-semibold text-foreground">{Math.min(curPage * PAGE_SIZE, filtered.length)}</span> of{" "}
+              <span className="font-semibold text-foreground">{filtered.length}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" className="h-8" disabled={curPage <= 1}
+                onClick={() => setSearch({ page: curPage - 1 })}>
+                <ChevronLeft className="h-4 w-4" />Prev
+              </Button>
+              <span className="rounded-md border bg-card px-3 py-1 font-mono text-xs font-semibold">
+                {curPage} / {totalPages}
+              </span>
+              <Button size="sm" variant="outline" className="h-8" disabled={curPage >= totalPages}
+                onClick={() => setSearch({ page: curPage + 1 })}>
+                Next<ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!confirmSale} onOpenChange={(o) => !o && setConfirmSale(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this sale?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Invoice <span className="font-mono font-semibold text-foreground">{confirmSale?.invoice}</span> will be permanently removed and its stock restored. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={del.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={del.isPending}
+              onClick={(e) => { e.preventDefault(); if (confirmSale) del.mutate(confirmSale.id); }}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+            >
+              {del.isPending ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* View details modal */}
+      <SaleDetailsDialog
+        id={viewId}
+        onClose={() => setViewId(null)}
+        onOpenFull={(id) => nav({ to: "/admin/sales/$id", params: { id } })}
+        getFn={getFn}
+      />
+    </div>
+  );
+}
+
+function SaleDetailsDialog({
+  id, onClose, onOpenFull, getFn,
+}: { id: string | null; onClose: () => void; onOpenFull: (id: string) => void; getFn: (args: { data: { id: string } }) => Promise<Awaited<ReturnType<typeof getPosSale>>> }) {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["admin-sale", id],
+    queryFn: () => getFn({ data: { id: id! } }),
+    enabled: !!id,
+  });
+
+  const status = data ? (data.paid >= data.total ? "Paid" : data.paid > 0 ? "Partial" : "Unpaid") : "";
+  const statusCls = status === "Paid"
+    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+    : status === "Partial"
+      ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+      : "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300";
+
+  return (
+    <Dialog open={!!id} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-2xl overflow-hidden p-0">
+        <DialogHeader className="border-b bg-gradient-to-br from-primary/10 via-primary/5 to-transparent px-6 py-5">
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <Receipt className="h-5 w-5 text-primary" />Sale details
+          </DialogTitle>
+          <DialogDescription>
+            {data ? <>Invoice <span className="font-mono font-semibold text-foreground">{data.invoice}</span> · {fmtDT(data.created_at)}</> : "Loading…"}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
+          {isLoading ? (
+            <div className="space-y-3">
+              <div className="h-16 animate-pulse rounded-lg bg-muted" />
+              <div className="h-40 animate-pulse rounded-lg bg-muted" />
+            </div>
+          ) : isError || !data ? (
+            <p className="py-10 text-center text-sm text-destructive">Failed to load sale.</p>
+          ) : (
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <MetaCell label="Customer" value={data.customer || "Walk-in"} />
+                <MetaCell label="Payment" value={<span className="capitalize">{data.payment_method}</span>} />
+                <MetaCell label="Items" value={String(data.items.reduce((s: number, it: { qty: number }) => s + it.qty, 0))} />
+                <MetaCell label="Status" value={<span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${statusCls}`}>{status}</span>} />
+              </div>
+
+              <div className="overflow-hidden rounded-xl border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-[11px] uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-semibold">Item</th>
+                      <th className="px-3 py-2 text-right font-semibold">Price</th>
+                      <th className="px-3 py-2 text-right font-semibold">Qty</th>
+                      <th className="px-3 py-2 text-right font-semibold">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.items.map((it: { id: string; name: string; qty: number; price: number }) => (
+                      <tr key={it.id} className="border-t">
+                        <td className="px-3 py-2 font-medium">{it.name}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{money(it.price)}</td>
+                        <td className="px-3 py-2 text-right tabular-nums">{it.qty}</td>
+                        <td className="px-3 py-2 text-right font-semibold tabular-nums">{money(it.price * it.qty)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="ml-auto grid w-full max-w-sm gap-1 rounded-xl border bg-muted/20 p-4 text-sm">
+                <SumRow label="Subtotal" value={money(data.subtotal)} />
+                {data.discount ? <SumRow label="Discount" value={`− ${money(data.discount)}`} /> : null}
+                {data.tax ? <SumRow label="Tax" value={`+ ${money(data.tax)}`} /> : null}
+                <div className="mt-1 flex items-center justify-between border-t pt-2 text-base font-bold">
+                  <span>Total</span><span className="tabular-nums text-primary">{money(data.total)}</span>
+                </div>
+                <SumRow label="Paid" value={money(data.paid)} />
+                <SumRow label="Change" value={money(Math.max(0, data.paid - data.total))} />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="border-t bg-muted/20 px-6 py-3">
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          {data && (
+            <>
+              <Button variant="outline" onClick={() => printThermalReceipt(data)}>
+                <Printer className="mr-1 h-4 w-4" />Print
+              </Button>
+              <Button onClick={() => onOpenFull(data.id)}>
+                Open full page<ArrowRight className="ml-1 h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MetaCell({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border bg-card px-3 py-2">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mt-0.5 truncate text-sm font-semibold">{value}</div>
+    </div>
+  );
+}
+
+function SumRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="tabular-nums">{value}</span>
     </div>
   );
 }

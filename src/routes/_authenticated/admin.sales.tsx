@@ -95,31 +95,60 @@ function SalesPage() {
     onError: (e: Error) => toast.error(e.message || "Failed to delete sale"),
   });
 
-  const exportCsv = () => {
+  const exportCsv = async () => {
     if (filtered.length === 0) { toast.error("Nothing to export"); return; }
-    const headers = ["Invoice", "Date", "Customer", "Payment", "Items", "Qty", "Subtotal", "Discount", "Tax", "Total"];
-    const esc = (v: unknown) => {
-      const s = String(v ?? "");
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const lines = [headers.join(",")];
-    for (const r of filtered) {
+    setIsExporting(true);
+    try {
+      // yield to UI so spinner paints
+      await new Promise((r) => setTimeout(r, 0));
+      const headers = [
+        "Invoice", "Date", "Time", "Customer", "Payment",
+        "Item Count", "Total Qty", "Subtotal", "Discount", "Tax", "Total",
+      ];
+      const esc = (v: unknown) => {
+        const s = String(v ?? "");
+        return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const num = (n: number) => (Number(n) || 0).toFixed(2);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const fmtDate = (iso: string) => {
+        const d = new Date(iso);
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      };
+      const fmtTime = (iso: string) => {
+        const d = new Date(iso);
+        return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      };
+      const lines = [headers.map(esc).join(",")];
+      for (const r of filtered) {
+        lines.push([
+          r.invoice, fmtDate(r.created_at), fmtTime(r.created_at),
+          r.customer ?? "Walk-in", r.payment_method,
+          r.items_count, r.quantity,
+          num(r.subtotal), num(r.discount), num(r.tax), num(r.total),
+        ].map(esc).join(","));
+      }
+      lines.push("");
       lines.push([
-        r.invoice, new Date(r.created_at).toISOString(), r.customer ?? "Walk-in",
-        r.payment_method, r.items_count, r.quantity,
-        r.subtotal.toFixed(2), r.discount.toFixed(2), r.tax.toFixed(2), r.total.toFixed(2),
+        "TOTAL", "", "", "", "", filtered.length, totalQty,
+        num(filtered.reduce((s, r) => s + r.subtotal, 0)),
+        num(filtered.reduce((s, r) => s + r.discount, 0)),
+        num(filtered.reduce((s, r) => s + r.tax, 0)),
+        num(totalAmount),
       ].map(esc).join(","));
+      const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sales-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${filtered.length} sale${filtered.length === 1 ? "" : "s"}`);
+    } catch (e) {
+      toast.error((e as Error).message || "Export failed");
+    } finally {
+      setIsExporting(false);
     }
-    lines.push("");
-    lines.push(["", "", "", "", "", "TOTAL", "", "", "", totalAmount.toFixed(2)].map(esc).join(","));
-    const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sales-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${filtered.length} sale${filtered.length === 1 ? "" : "s"}`);
   };
 
   return (

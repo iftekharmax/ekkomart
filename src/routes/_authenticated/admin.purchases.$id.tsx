@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Trash2, DollarSign } from "lucide-react";
+import { ArrowLeft, Trash2, DollarSign, Plus, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 

@@ -198,19 +198,26 @@ function PosPage() {
     mutationFn: async () => {
       if (cart.length === 0) throw new Error("Cart is empty");
       if (paid < total) throw new Error("Paid amount is less than total");
+      const snapshot = {
+        items: cart.map((c) => ({ name: c.name, price: Number(c.price), qty: c.qty })),
+        subtotal, discount, tax, total, paid, change, method,
+        customer: customer || "Walk-in",
+      };
       const res = await saleFn({ data: {
         items: cart.map((c) => ({ product_id: c.id, name: c.name, price: c.price, qty: c.qty, img: c.img })),
         discount, tax, paid, payment_method: method, customer: customer || null,
       } });
-      return res as { id: string; total: number };
+      return { res: res as { id: string; total: number }, snapshot };
     },
-    onSuccess: (res) => {
+    onSuccess: ({ res, snapshot }) => {
       setReceipt(res);
+      printThermalReceipt({ id: res.id, ...snapshot });
       clearAll();
       toast.success("Sale completed");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   return (
     <div className="-m-4 grid gap-4 p-4 sm:-m-6 sm:p-6 lg:-m-8 lg:h-[calc(100dvh-2rem)] lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden lg:p-6">

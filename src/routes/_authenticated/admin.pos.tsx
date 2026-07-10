@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { posSearchProducts, createPosSale } from "@/lib/pos.functions";
+import { posSearchProducts, createPosSale, createPosQuickProduct } from "@/lib/pos.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {

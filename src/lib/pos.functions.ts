@@ -64,11 +64,12 @@ export const posSearchProducts = createServerFn({ method: "GET" })
             id: v.id,
             product_id: p.id,
             variation_id: v.id,
+            parent_name: p.name,
+            variation_name: v.name,
             name: `${p.name} - ${v.name}`,
             sku: v.sku ?? null,
             barcode: v.barcode ?? null,
             price: Number(v.price ?? p.price) || 0,
-
             stock: v.stock,
             img: v.image_url ?? p.img ?? null,
             unit: p.unit ?? null,
@@ -77,10 +78,12 @@ export const posSearchProducts = createServerFn({ method: "GET" })
       } else {
         out.push({
           id: p.id, product_id: p.id, variation_id: null,
+          parent_name: p.name, variation_name: null,
           name: p.name, sku: p.sku, barcode: p.barcode,
           price: Number(p.price) || 0, stock: p.stock, img: p.img, unit: p.unit,
         });
       }
+
     }
     return out.slice(0, data.limit);
   });
@@ -131,50 +134,23 @@ export const createPosSale = createServerFn({ method: "POST" })
   .inputValidator((d: z.infer<typeof saleInput>) => saleInput.parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const subtotal = data.items.reduce((s, it) => s + it.price * it.qty, 0);
-    const total = Math.max(0, subtotal - data.discount + data.tax);
-
-    const note = JSON.stringify({
-      pos: true,
-      subtotal, discount: data.discount, tax: data.tax, paid: data.paid,
-      payment_method: data.payment_method, customer: data.customer ?? null,
+    const { data: rows, error } = await (context.supabase.rpc as any)("pos_create_sale", {
+      _items: data.items.map((it) => ({
+        product_id: it.product_id,
+        variation_id: it.variation_id ?? null,
+        name: it.name, price: it.price, qty: it.qty, img: it.img ?? null,
+      })),
+      _discount: data.discount,
+      _tax: data.tax,
+      _paid: data.paid,
+      _payment_method: data.payment_method,
+      _customer: data.customer ?? null,
     });
-
-    const { data: order, error: oErr } = await context.supabase
-      .from("orders")
-      .insert({ user_id: context.userId, status: "delivered", total, note } as any)
-      .select().single();
-    if (oErr) throw new Error(oErr.message);
-
-    const items = data.items.map((it) => ({
-      order_id: order.id, product_id: it.product_id, name: it.name,
-      price: it.price, qty: it.qty, img: it.img ?? null,
-    }));
-    const { error: iErr } = await context.supabase.from("order_items").insert(items as any);
-    if (iErr) {
-      await context.supabase.from("orders").delete().eq("id", order.id);
-      throw new Error(iErr.message);
-    }
-
-    // Decrement stock — variation stock if provided, else product stock.
-    for (const it of data.items) {
-      if (it.variation_id) {
-        const { data: v } = await (context.supabase.from("product_variations" as any) as any)
-          .select("stock").eq("id", it.variation_id).maybeSingle();
-        const cur = Number((v as any)?.stock ?? 0);
-        await (context.supabase.from("product_variations" as any) as any)
-          .update({ stock: cur - it.qty }).eq("id", it.variation_id);
-      } else {
-        const { data: p } = await context.supabase.from("products").select("stock").eq("id", it.product_id).maybeSingle();
-        const cur = Number((p as any)?.stock ?? 0);
-        const next = cur - it.qty;
-        await context.supabase.from("products").update({ stock: next, in_stock: next > 0 } as any).eq("id", it.product_id);
-      }
-    }
-
-
-    return { id: order.id, total };
+    if (error) throw new Error(error.message);
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    return { id: row.id as string, total: Number(row.total) || 0 };
   });
+
 
 export const listPosTodaySales = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])

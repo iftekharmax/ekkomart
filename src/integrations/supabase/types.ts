@@ -938,6 +938,20 @@ export type Database = {
         }
         Returns: boolean
       }
+      pos_create_sale: {
+        Args: {
+          _customer?: string
+          _discount?: number
+          _items: Json
+          _paid?: number
+          _payment_method?: string
+          _tax?: number
+        }
+        Returns: {
+          id: string
+          total: number
+        }[]
+      }
       slugify: { Args: { input: string }; Returns: string }
     }
     Enums: {

@@ -26,8 +26,10 @@ type Product = {
   id: string; name: string; sku: string | null; barcode: string | null;
   price: number; stock: number | null; img: string | null; unit: string | null;
   product_id?: string; variation_id?: string | null;
+  parent_name?: string | null; variation_name?: string | null;
 };
 type CartItem = Product & { qty: number };
+
 
 
 const money = (n: number) => `৳${n.toFixed(2)}`;
@@ -165,10 +167,14 @@ function PosPage() {
     setCart((prev) => prev.flatMap((it) => {
       if (it.id !== id) return [it];
       if (qty <= 0) return [];
-      if (it.stock != null && qty > it.stock) { toast.error(`Only ${it.stock} in stock`); return [it]; }
+      if (it.stock != null && qty > it.stock) {
+        toast.error(`Insufficient stock for “${it.name}”`, { description: `Only ${it.stock} available` });
+        return [it];
+      }
       return [{ ...it, qty }];
     }));
   }
+
   function remove(id: string) { setCart((prev) => prev.filter((i) => i.id !== id)); }
   function clearAll() { setCart([]); setDiscount(0); setTaxMode("default"); setPaid(0); setCustomer(""); }
 
@@ -464,7 +470,16 @@ function PosPage() {
                             className={`flex w-full items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left transition last:border-0 dark:border-slate-800 ${i === activeIdx ? "bg-primary/5" : "hover:bg-slate-50 dark:hover:bg-slate-800"} disabled:cursor-not-allowed disabled:opacity-50`}
                           >
                             <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{p.name}</div>
+                              <div className="flex items-center gap-2">
+                                <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                  {p.variation_id ? (p.parent_name ?? p.name) : p.name}
+                                </div>
+                                {p.variation_id && p.variation_name ? (
+                                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                                    {p.variation_name}
+                                  </span>
+                                ) : null}
+                              </div>
                               <div className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap text-[11px] leading-tight text-slate-500">
                                 <span className="min-w-0 truncate">Barcode: {textOrDash(p.barcode)}</span>
                                 <span className="shrink-0 text-slate-300">·</span>
@@ -474,6 +489,7 @@ function PosPage() {
                             <div className="text-right">
                               <div className="text-sm font-bold text-primary">{money(Number(p.price))}</div>
                             </div>
+
 
 
                           </button>

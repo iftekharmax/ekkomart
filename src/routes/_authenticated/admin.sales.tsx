@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Eye, Trash2, Search, Receipt, Printer, Calendar, X, TrendingUp, ShoppingBag,
-  Download, ChevronLeft, ChevronRight, ArrowRight, Loader2,
+  Download, ChevronLeft, ChevronRight, Loader2,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { printThermalReceipt } from "@/lib/thermal-print";
 import {

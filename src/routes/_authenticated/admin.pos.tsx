@@ -375,26 +375,26 @@ function PosPage() {
   const portalContainer = isFullscreen ? posRootEl : undefined;
 
   return (
-    <div ref={posRootRef} className="-m-4 grid gap-4 bg-slate-50 p-4 dark:bg-slate-950 sm:-m-6 sm:p-6 lg:-m-8 lg:h-[calc(100dvh-2rem)] lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden lg:p-6">
+    <div ref={posRootRef} className="-m-4 grid gap-5 bg-gradient-to-br from-slate-100 via-slate-50 to-white p-4 antialiased dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 sm:-m-6 sm:p-6 lg:-m-8 lg:h-[calc(100dvh-2rem)] lg:grid-cols-[minmax(0,1fr)_440px] lg:overflow-hidden lg:p-6">
       {/* LEFT: Scan/Search + Cart items summary */}
-      <section className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="flex min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white/95 shadow-[0_10px_40px_-20px_rgba(15,23,42,0.25)] backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/90">
         {/* Scanner header */}
-        <div className="border-b border-slate-200 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 dark:border-slate-800">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-md">
+        <div className="border-b border-slate-200/70 bg-gradient-to-br from-primary/12 via-primary/5 to-transparent p-6 dark:border-slate-800">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/25">
               <ScanLine className="h-5 w-5" />
             </span>
             <div className="flex-1">
-              <div className="text-sm font-bold">Scan or search a product</div>
-              <div className="text-xs text-slate-500">Use a barcode scanner, or type a name / SKU / barcode</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary/70">Point of Sale</div>
+              <div className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">Scan or search a product</div>
             </div>
             {isFullscreen && (
               <span
                 role="status"
                 aria-live="polite"
-                className="hidden items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 sm:inline-flex"
+                className="hidden items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 sm:inline-flex"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                 Fullscreen
               </span>
             )}
@@ -406,10 +406,10 @@ function PosPage() {
               aria-label={isFullscreen ? "Exit fullscreen (Escape)" : "Enter fullscreen"}
               aria-pressed={isFullscreen}
               title={isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen"}
-              className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              className="h-9 rounded-xl border-slate-200 bg-white/80 font-medium shadow-sm hover:bg-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900/60"
             >
               {isFullscreen ? <Minimize2 className="h-4 w-4" aria-hidden="true" /> : <Maximize2 className="h-4 w-4" aria-hidden="true" />}
-              <span className="ml-1 hidden sm:inline">{isFullscreen ? "Exit" : "Fullscreen"}</span>
+              <span className="ml-1.5 hidden sm:inline">{isFullscreen ? "Exit" : "Fullscreen"}</span>
             </Button>
           </div>
           <div className="relative">
@@ -422,7 +422,7 @@ function PosPage() {
               onFocus={() => setOpen(true)}
               onBlur={() => setTimeout(() => setOpen(false), 150)}
               placeholder="Scan barcode or start typing…"
-              className="h-14 rounded-xl border-2 border-primary/20 pl-12 pr-4 text-base font-medium shadow-sm focus-visible:border-primary focus-visible:ring-primary/20"
+              className="h-14 rounded-2xl border-2 border-primary/15 bg-white pl-12 pr-4 text-[15px] font-medium tracking-tight shadow-sm placeholder:font-normal placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15 dark:bg-slate-950"
             />
             {open && q.trim().length > 0 && (
               <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
@@ -475,14 +475,17 @@ function PosPage() {
         </div>
 
         {/* Cart list (moved to left, spacious) */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4 text-primary" />
-              <span className="text-sm font-bold">Cart ({cart.length})</span>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-lg bg-primary/10 text-primary">
+                <ShoppingCart className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">Cart</span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-slate-600 dark:bg-slate-800 dark:text-slate-300">{cart.length}</span>
             </div>
             {cart.length > 0 && (
-              <button onClick={clearAll} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <button onClick={clearAll} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40">
                 <X className="h-3.5 w-3.5" /> Clear all
               </button>
             )}
@@ -491,29 +494,32 @@ function PosPage() {
             {cart.length === 0 ? (
               <div className="grid h-full place-items-center py-16 text-center text-sm text-slate-500">
                 <div>
-                  <ScanLine className="mx-auto mb-3 h-12 w-12 text-slate-300" />
-                  <div className="font-medium">Ready to scan</div>
-                  <div className="text-xs">Scan a barcode or search above to add items.</div>
+                  <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-slate-100 dark:bg-slate-800">
+                    <ScanLine className="h-8 w-8 text-slate-400" />
+                  </div>
+                  <div className="text-base font-semibold text-slate-700 dark:text-slate-200">Ready to scan</div>
+                  <div className="mt-1 text-xs text-slate-500">Scan a barcode or search above to add items.</div>
                 </div>
               </div>
             ) : (
               <ul className="space-y-2">
                 {cart.map((it) => (
-                  <li key={it.id} onClick={() => setSelectedCartId(it.id)} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 shadow-sm transition-all ${selectedCartId === it.id ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "border-slate-200 bg-white hover:border-primary/40 dark:border-slate-800 dark:bg-slate-950"}`}>
+                  <li key={it.id} onClick={() => setSelectedCartId(it.id)} className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition-all ${selectedCartId === it.id ? "border-primary bg-primary/[0.06] shadow-md shadow-primary/10 ring-1 ring-primary/30" : "border-slate-200/80 bg-white hover:border-primary/40 hover:shadow-sm dark:border-slate-800 dark:bg-slate-950"}`}>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold">{it.name}</div>
-                      <div className="text-xs text-slate-500">{money(Number(it.price))} × {it.qty} = <b className="text-slate-800 dark:text-slate-100">{money(Number(it.price) * it.qty)}</b></div>
+                      <div className="truncate text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">{it.name}</div>
+                      <div className="mt-0.5 text-xs tabular-nums text-slate-500">{money(Number(it.price))} × {it.qty} = <b className="text-slate-800 dark:text-slate-100">{money(Number(it.price) * it.qty)}</b></div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setQty(it.id, it.qty - 1)} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"><Minus className="h-3.5 w-3.5" /></button>
+                    <div className="flex items-center gap-1 rounded-xl bg-slate-100/70 p-0.5 dark:bg-slate-800/60">
+                      <button onClick={(e) => { e.stopPropagation(); setQty(it.id, it.qty - 1); }} className="grid h-7 w-7 place-items-center rounded-lg text-slate-600 transition hover:bg-white hover:text-slate-900 hover:shadow-sm dark:text-slate-300 dark:hover:bg-slate-700"><Minus className="h-3.5 w-3.5" /></button>
                       <input
                         value={it.qty}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => setQty(it.id, Math.max(0, Number(e.target.value) || 0))}
-                        className="h-8 w-12 rounded-md border border-slate-200 bg-transparent text-center text-sm dark:border-slate-700"
+                        className="h-7 w-10 rounded-md bg-transparent text-center text-sm font-semibold tabular-nums outline-none"
                       />
-                      <button onClick={() => setQty(it.id, it.qty + 1)} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"><Plus className="h-3.5 w-3.5" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); setQty(it.id, it.qty + 1); }} className="grid h-7 w-7 place-items-center rounded-lg text-slate-600 transition hover:bg-white hover:text-slate-900 hover:shadow-sm dark:text-slate-300 dark:hover:bg-slate-700"><Plus className="h-3.5 w-3.5" /></button>
                     </div>
-                    <button onClick={() => remove(it.id)} className="ml-1 grid h-8 w-8 place-items-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); remove(it.id); }} className="ml-1 grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950"><Trash2 className="h-4 w-4" /></button>
                   </li>
                 ))}
               </ul>
@@ -523,42 +529,42 @@ function PosPage() {
       </section>
 
       {/* RIGHT: Checkout */}
-      <aside className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <header className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+      <aside className="flex min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white/95 shadow-[0_10px_40px_-20px_rgba(15,23,42,0.25)] backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/90">
+        <header className="flex items-center justify-between border-b border-slate-200/70 bg-gradient-to-r from-primary/12 via-primary/5 to-transparent px-5 py-4 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-md shadow-primary/25">
               <Wallet className="h-4 w-4" />
             </span>
             <div>
-              <div className="text-sm font-bold">Checkout</div>
-              <div className="text-[11px] text-slate-500">Review & complete sale</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/70">Checkout</div>
+              <div className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">Review & complete sale</div>
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button type="button" variant="outline" size="sm" onClick={saveDraft} className="h-8 gap-1 px-2 text-xs" title="Save current cart as draft">
+            <Button type="button" variant="outline" size="sm" onClick={saveDraft} className="h-8 gap-1 rounded-lg border-slate-200 bg-white/70 px-2 text-xs font-medium dark:border-slate-700 dark:bg-slate-900/50" title="Save current cart as draft">
               <Save className="h-3.5 w-3.5" /> Draft
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setDraftsOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Open saved drafts">
+            <Button type="button" variant="outline" size="sm" onClick={() => setDraftsOpen(true)} className="h-8 gap-1 rounded-lg border-slate-200 bg-white/70 px-2 text-xs font-medium tabular-nums dark:border-slate-700 dark:bg-slate-900/50" title="Open saved drafts">
               <FileText className="h-3.5 w-3.5" /> {drafts.length}
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Today's sales history">
+            <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)} className="h-8 gap-1 rounded-lg border-slate-200 bg-white/70 px-2 text-xs font-medium dark:border-slate-700 dark:bg-slate-900/50" title="Today's sales history">
               <History className="h-3.5 w-3.5" />
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setCalcOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Calculator">
+            <Button type="button" variant="outline" size="sm" onClick={() => setCalcOpen(true)} className="h-8 gap-1 rounded-lg border-slate-200 bg-white/70 px-2 text-xs font-medium dark:border-slate-700 dark:bg-slate-900/50" title="Calculator">
               <CalcIcon className="h-3.5 w-3.5" />
             </Button>
           </div>
         </header>
 
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <div className="mb-3 grid grid-cols-2 gap-2">
-            <label className="text-xs text-slate-500">Mobile number
-              <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="01XXXXXXXXX" inputMode="tel" className="mt-1 h-9" />
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          <div className="mb-4 grid grid-cols-2 gap-3">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Mobile number
+              <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="01XXXXXXXXX" inputMode="tel" className="mt-1.5 h-10 rounded-lg border-slate-200 text-sm font-medium tracking-tight dark:border-slate-700" />
             </label>
-            <label className="text-xs text-slate-500">Method
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Method
               <Select value={method} onValueChange={(v) => setMethod(v as any)}>
-                <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5 h-10 rounded-lg border-slate-200 text-sm font-medium dark:border-slate-700"><SelectValue /></SelectTrigger>
                 <SelectContent container={portalContainer}>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="card">Card</SelectItem>
@@ -567,12 +573,12 @@ function PosPage() {
                 </SelectContent>
               </Select>
             </label>
-            <label className="text-xs text-slate-500">Discount
-              <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(Math.max(0, Number(e.target.value) || 0))} className="mt-1 h-9" />
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Discount
+              <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(Math.max(0, Number(e.target.value) || 0))} className="mt-1.5 h-10 rounded-lg border-slate-200 text-sm font-semibold tabular-nums dark:border-slate-700" />
             </label>
-            <label className="text-xs text-slate-500">Tax
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Tax
               <Select value={taxMode} onValueChange={(v) => setTaxMode(v as "default" | "free")}>
-                <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5 h-10 rounded-lg border-slate-200 text-sm font-medium dark:border-slate-700"><SelectValue /></SelectTrigger>
                 <SelectContent container={portalContainer}>
                   <SelectItem value="default">Default (8%)</SelectItem>
                   <SelectItem value="free">Tax free</SelectItem>
@@ -581,17 +587,17 @@ function PosPage() {
             </label>
           </div>
 
-          <div className="space-y-1 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-950">
-            <Row label="Subtotal" value={money(subtotal)} />
-            <Row label="Discount" value={`− ${money(discount)}`} />
-            <Row label={taxMode === "default" ? "Tax (8%)" : "Tax (free)"} value={`+ ${money(tax)}`} />
-            <div className="my-1 border-t border-dashed border-slate-200 dark:border-slate-800" />
-            <Row label={<span className="font-bold text-slate-900 dark:text-slate-100">Total</span>} value={<span className="text-lg font-black text-primary">{money(total)}</span>} />
+          <div className="space-y-1.5 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-slate-50 to-white p-4 text-sm tabular-nums dark:border-slate-800 dark:from-slate-950 dark:to-slate-900">
+            <Row label={<span className="text-slate-500">Subtotal</span>} value={<span className="font-medium text-slate-700 dark:text-slate-200">{money(subtotal)}</span>} />
+            <Row label={<span className="text-slate-500">Discount</span>} value={<span className="font-medium text-rose-600">− {money(discount)}</span>} />
+            <Row label={<span className="text-slate-500">{taxMode === "default" ? "Tax (8%)" : "Tax (free)"}</span>} value={<span className="font-medium text-slate-700 dark:text-slate-200">+ {money(tax)}</span>} />
+            <div className="my-2 border-t border-dashed border-slate-200 dark:border-slate-800" />
+            <Row label={<span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total due</span>} value={<span className="text-2xl font-bold tracking-tight text-primary">{money(total)}</span>} />
           </div>
 
-          <div className="mt-3">
-            <label className="text-xs text-slate-500">Amount received</label>
-            <div className="mt-1 flex gap-2">
+          <div className="mt-4">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Amount received</label>
+            <div className="mt-1.5 flex gap-2">
               <Input
                 type="number" min={0} value={paid}
                 onChange={(e) => setPaid(Math.max(0, Number(e.target.value) || 0))}
@@ -601,21 +607,21 @@ function PosPage() {
                     if (cart.length > 0 && paid >= total && !sale.isPending) sale.mutate();
                   }
                 }}
-                className="h-10 flex-1"
+                className="h-11 flex-1 rounded-lg border-slate-200 text-base font-semibold tabular-nums dark:border-slate-700"
               />
-              <Button type="button" variant="outline" className="h-10" onClick={() => setPaid(total)}>Exact</Button>
+              <Button type="button" variant="outline" className="h-11 rounded-lg border-slate-200 px-4 font-semibold dark:border-slate-700" onClick={() => setPaid(total)}>Exact</Button>
             </div>
-            <div className={`mt-1 text-xs ${paid >= total ? "text-emerald-600" : "text-rose-600"}`}>
-              {paid >= total ? `Change: ${money(change)}` : `Remaining: ${money(total - paid)}`}
+            <div className={`mt-2 rounded-lg px-3 py-2 text-xs font-semibold tabular-nums ${paid >= total ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"}`}>
+              {paid >= total ? `Change to return: ${money(change)}` : `Remaining: ${money(total - paid)}`}
             </div>
           </div>
         </div>
 
-        <div className="border-t border-slate-200 p-4 dark:border-slate-800">
+        <div className="border-t border-slate-200/70 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/30">
           <Button
             onClick={() => sale.mutate()}
             disabled={sale.isPending || cart.length === 0 || paid < total}
-            className="h-12 w-full text-base font-bold"
+            className="h-14 w-full rounded-xl bg-gradient-to-r from-primary to-primary/85 text-base font-semibold tracking-tight shadow-lg shadow-primary/25 transition hover:shadow-xl hover:shadow-primary/30 disabled:opacity-60 disabled:shadow-none"
           >
             <Wallet className="mr-2 h-5 w-5" />
             {sale.isPending ? "Processing…" : `Pay · ${money(total)}`}

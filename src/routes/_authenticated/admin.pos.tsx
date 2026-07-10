@@ -829,11 +829,12 @@ function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove, container 
 }
 
 // ============ Calculator ============
-function CalculatorDialog({ open, onOpenChange, selectedItem, onApplyQty, onApplyDiscount }: {
+function CalculatorDialog({ open, onOpenChange, selectedItem, onApplyQty, onApplyDiscount, container }: {
   open: boolean; onOpenChange: (o: boolean) => void;
   selectedItem: CartItem | null;
   onApplyQty: (n: number) => void;
   onApplyDiscount: (n: number) => void;
+  container?: HTMLElement | null;
 }) {
   const [expr, setExpr] = useState("");
   const [result, setResult] = useState("0");

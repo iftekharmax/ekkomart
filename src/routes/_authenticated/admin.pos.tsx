@@ -12,7 +12,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Minus, Plus, Trash2, Search, ScanLine, ShoppingCart, Wallet, X, Receipt, CheckCircle2, Package,
+  Minus, Plus, Trash2, Search, ScanLine, ShoppingCart, Wallet, X, CheckCircle2, Package,
+  Calculator as CalcIcon, Save, FileText, Delete,
 } from "lucide-react";
 import { toast } from "sonner";
 

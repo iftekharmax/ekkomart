@@ -354,10 +354,8 @@ function PosPage() {
                             disabled={out}
                             className={`flex w-full items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left transition last:border-0 dark:border-slate-800 ${i === activeIdx ? "bg-primary/5" : "hover:bg-slate-50 dark:hover:bg-slate-800"} disabled:cursor-not-allowed disabled:opacity-50`}
                           >
-                            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-                              {p.img ? <img src={p.img} alt="" className="h-full w-full object-cover" /> : (
-                                <div className="grid h-full place-items-center text-slate-300"><Package className="h-5 w-5" /></div>
-                              )}
+                            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                              <Package className="h-5 w-5" />
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{p.name}</div>

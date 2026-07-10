@@ -200,18 +200,26 @@ export const deletePosSale = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    // Restore stock for the items in this sale
+    // Restore stock for the items in this sale (variation-aware)
     const { data: items } = await context.supabase
       .from("order_items")
-      .select("product_id,qty")
+      .select("product_id,variation_id,qty")
       .eq("order_id", data.id);
     for (const it of (items ?? []) as any[]) {
-      if (!it.product_id) continue;
-      const { data: p } = await context.supabase.from("products").select("stock").eq("id", it.product_id).maybeSingle();
-      const cur = Number((p as any)?.stock ?? 0);
-      const next = cur + Number(it.qty || 0);
-      await context.supabase.from("products").update({ stock: next, in_stock: next > 0 } as any).eq("id", it.product_id);
+      const qty = Number(it.qty || 0);
+      if (!qty) continue;
+      if (it.variation_id) {
+        const { data: v } = await context.supabase.from("product_variations").select("stock").eq("id", it.variation_id).maybeSingle();
+        const next = Number((v as any)?.stock ?? 0) + qty;
+        await context.supabase.from("product_variations").update({ stock: next } as any).eq("id", it.variation_id);
+      }
+      if (it.product_id) {
+        const { data: p } = await context.supabase.from("products").select("stock").eq("id", it.product_id).maybeSingle();
+        const next = Number((p as any)?.stock ?? 0) + qty;
+        await context.supabase.from("products").update({ stock: next, in_stock: next > 0 } as any).eq("id", it.product_id);
+      }
     }
+
     await context.supabase.from("order_items").delete().eq("order_id", data.id);
     const { error } = await context.supabase.from("orders").delete().eq("id", data.id);
     if (error) throw new Error(error.message);

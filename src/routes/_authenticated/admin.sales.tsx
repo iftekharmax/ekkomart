@@ -47,6 +47,7 @@ function SalesPage() {
 
   const [confirmSale, setConfirmSale] = useState<{ id: string; invoice: string } | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const setSearch = (patch: Partial<{ q: string; from: string; to: string; page: number }>) => {
     const next = { q, from, to, page, ...patch };

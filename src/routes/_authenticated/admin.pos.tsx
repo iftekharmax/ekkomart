@@ -141,7 +141,7 @@ function PosPage() {
     }));
   }
   function remove(id: string) { setCart((prev) => prev.filter((i) => i.id !== id)); }
-  function clearAll() { setCart([]); setDiscount(0); setTax(0); setPaid(0); setCustomer(""); }
+  function clearAll() { setCart([]); setDiscount(0); setTaxMode("default"); setPaid(0); setCustomer(""); }
 
   function openNotFound(code: string) {
     setNotFound({ code });

@@ -606,7 +606,7 @@ function PosPage() {
         </div>
       </aside>
 
-      <DraftsDialog open={draftsOpen} onOpenChange={setDraftsOpen} drafts={drafts} onLoad={loadDraft} onRemove={removeDraft} />
+      <DraftsDialog open={draftsOpen} onOpenChange={setDraftsOpen} drafts={drafts} onLoad={loadDraft} onRemove={removeDraft} container={portalContainer} />
       <CalculatorDialog
         open={calcOpen}
         onOpenChange={setCalcOpen}
@@ -617,11 +617,12 @@ function PosPage() {
           toast.success(`Qty set to ${Math.max(1, Math.floor(n))}`);
         }}
         onApplyDiscount={(n) => { setDiscount(Math.max(0, n)); toast.success(`Discount set to ${money(Math.max(0, n))}`); }}
+        container={portalContainer}
       />
 
 
       <Dialog open={!!notFound} onOpenChange={(o) => !o && setNotFound(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent container={portalContainer} className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-primary" /> Product not found</DialogTitle>
           </DialogHeader>
@@ -789,13 +790,14 @@ function clearAutosave() {
   try { localStorage.removeItem(AUTOSAVE_KEY); } catch { /* ignore */ }
 }
 
-function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove }: {
+function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove, container }: {
   open: boolean; onOpenChange: (o: boolean) => void; drafts: Draft[];
   onLoad: (id: string) => void; onRemove: (id: string) => void;
+  container?: HTMLElement | null;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent container={container ?? undefined} className="sm:max-w-md">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Saved drafts</DialogTitle></DialogHeader>
         {drafts.length === 0 ? (
           <div className="py-8 text-center text-sm text-slate-500">No drafts saved yet.</div>
@@ -827,11 +829,12 @@ function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove }: {
 }
 
 // ============ Calculator ============
-function CalculatorDialog({ open, onOpenChange, selectedItem, onApplyQty, onApplyDiscount }: {
+function CalculatorDialog({ open, onOpenChange, selectedItem, onApplyQty, onApplyDiscount, container }: {
   open: boolean; onOpenChange: (o: boolean) => void;
   selectedItem: CartItem | null;
   onApplyQty: (n: number) => void;
   onApplyDiscount: (n: number) => void;
+  container?: HTMLElement | null;
 }) {
   const [expr, setExpr] = useState("");
   const [result, setResult] = useState("0");
@@ -873,7 +876,7 @@ function CalculatorDialog({ open, onOpenChange, selectedItem, onApplyQty, onAppl
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xs">
+      <DialogContent container={container ?? undefined} className="sm:max-w-xs">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><CalcIcon className="h-5 w-5 text-primary" /> Calculator</DialogTitle></DialogHeader>
         <div className="rounded-xl bg-slate-900 p-4 text-right text-white shadow-inner">
           <div className="min-h-[18px] truncate text-xs text-slate-400">{expr || "\u00A0"}</div>

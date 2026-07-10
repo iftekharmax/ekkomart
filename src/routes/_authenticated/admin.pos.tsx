@@ -876,7 +876,7 @@ function CalculatorDialog({ open, onOpenChange, selectedItem, onApplyQty, onAppl
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xs">
+      <DialogContent container={container ?? undefined} className="sm:max-w-xs">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><CalcIcon className="h-5 w-5 text-primary" /> Calculator</DialogTitle></DialogHeader>
         <div className="rounded-xl bg-slate-900 p-4 text-right text-white shadow-inner">
           <div className="min-h-[18px] truncate text-xs text-slate-400">{expr || "\u00A0"}</div>

@@ -80,8 +80,13 @@ export const getPurchase = createServerFn({ method: "GET" })
     const { data: payments, error: e3 } = await (context.supabase.from("purchase_payments" as any) as any)
       .select("*").eq("purchase_id", data.id).order("paid_at", { ascending: false });
     if (e3) throw new Error(e3.message);
-    return { header, items: items ?? [], payments: payments ?? [] };
+    const { data: returns, error: e4 } = await (context.supabase.from("purchase_returns" as any) as any)
+      .select("id,reference,return_date,total,reason,status")
+      .eq("purchase_id", data.id).order("return_date", { ascending: false });
+    if (e4) throw new Error(e4.message);
+    return { header, items: items ?? [], payments: payments ?? [], returns: returns ?? [] };
   });
+
 
 export const createPurchase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

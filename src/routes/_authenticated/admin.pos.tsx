@@ -78,7 +78,7 @@ function PosPage() {
       setDiscount(Number(auto.discount) || 0);
       setTax(Number(auto.tax) || 0);
       setMethod(auto.method ?? "cash");
-      toast.message("Restored unsaved cart");
+      toast.message("Draft auto-restored", { description: "Continuing your unsaved cart" });
     }
     hydratedRef.current = true;
     searchRef.current?.focus();

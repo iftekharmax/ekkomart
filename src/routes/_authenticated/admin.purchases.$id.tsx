@@ -119,58 +119,60 @@ function PurchaseDetail() {
         </table>
       </div>
 
-      <div className="mt-6 grid gap-3 rounded-xl border bg-card p-6 md:w-80 md:ml-auto">
-        <Row label="Subtotal" value={`$${Number(header.subtotal).toFixed(2)}`} />
-        <Row label="Discount" value={`-$${Number(header.discount).toFixed(2)}`} />
-        <Row label="Tax" value={`$${Number(header.tax).toFixed(2)}`} />
-        <Row label="Shipping" value={`$${Number(header.shipping).toFixed(2)}`} />
-        <div className="flex justify-between border-t pt-3 text-lg font-bold">
-          <span>Total</span><span>${Number(header.total).toFixed(2)}</span>
-        </div>
-        <Row label="Paid" value={`$${Number(header.paid).toFixed(2)}`} />
-        <div className={`flex justify-between text-sm font-semibold ${due > 0 ? "text-destructive" : "text-green-600"}`}>
-          <span>Due</span><span>${due.toFixed(2)}</span>
-        </div>
-      </div>
-
-      <div className="mt-6 overflow-hidden rounded-xl border bg-card">
-        <div className="border-b bg-muted/40 px-4 py-3 text-sm font-semibold">Payment history</div>
-        {(payments ?? []).length === 0 ? (
-          <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
-            <div className="grid h-12 w-12 place-items-center rounded-full bg-muted">
-              <Receipt className="h-6 w-6 text-muted-foreground" />
+      <div className="mt-6 grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <div className="border-b bg-muted/40 px-4 py-3 text-sm font-semibold">Payment history</div>
+          {(payments ?? []).length === 0 ? (
+            <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+              <div className="grid h-12 w-12 place-items-center rounded-full bg-muted">
+                <Receipt className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
+              {due > 0 && (
+                <Button size="sm" onClick={() => { setPayAmount(due); setPayOpen(true); }}>
+                  <DollarSign className="mr-2 h-4 w-4" /> Record first payment
+                </Button>
+              )}
             </div>
-            <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
-            {due > 0 && (
-              <Button size="sm" onClick={() => { setPayAmount(due); setPayOpen(true); }}>
-                <DollarSign className="mr-2 h-4 w-4" /> Record first payment
-              </Button>
-            )}
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[520px] text-sm">
+                <thead className="bg-muted/20 text-left">
+                  <tr>
+                    <th className="px-4 py-2 font-semibold">Date</th>
+                    <th className="px-4 py-2 font-semibold">Receipt #</th>
+                    <th className="px-4 py-2 font-semibold">Note</th>
+                    <th className="px-4 py-2 text-right font-semibold">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(payments as any[]).map((p) => (
+                    <tr key={p.id} className="border-t">
+                      <td className="px-4 py-2">{new Date(p.paid_at).toLocaleString()}</td>
+                      <td className="px-4 py-2 font-mono text-xs">{p.receipt_no ?? "—"}</td>
+                      <td className="px-4 py-2 text-muted-foreground">{p.note ?? "—"}</td>
+                      <td className="px-4 py-2 text-right font-semibold">${Number(p.amount).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="grid h-fit gap-3 rounded-xl border bg-card p-6">
+          <Row label="Subtotal" value={`$${Number(header.subtotal).toFixed(2)}`} />
+          <Row label="Discount" value={`-$${Number(header.discount).toFixed(2)}`} />
+          <Row label="Tax" value={`$${Number(header.tax).toFixed(2)}`} />
+          <Row label="Shipping" value={`$${Number(header.shipping).toFixed(2)}`} />
+          <div className="flex justify-between border-t pt-3 text-lg font-bold">
+            <span>Total</span><span>${Number(header.total).toFixed(2)}</span>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] text-sm">
-            <thead className="bg-muted/20 text-left">
-              <tr>
-                <th className="px-4 py-2 font-semibold">Date</th>
-                <th className="px-4 py-2 font-semibold">Receipt #</th>
-                <th className="px-4 py-2 font-semibold">Note</th>
-                <th className="px-4 py-2 text-right font-semibold">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(payments as any[]).map((p) => (
-                <tr key={p.id} className="border-t">
-                  <td className="px-4 py-2">{new Date(p.paid_at).toLocaleString()}</td>
-                  <td className="px-4 py-2 font-mono text-xs">{p.receipt_no ?? "—"}</td>
-                  <td className="px-4 py-2 text-muted-foreground">{p.note ?? "—"}</td>
-                  <td className="px-4 py-2 text-right font-semibold">${Number(p.amount).toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Row label="Paid" value={`$${Number(header.paid).toFixed(2)}`} />
+          <div className={`flex justify-between text-sm font-semibold ${due > 0 ? "text-destructive" : "text-green-600"}`}>
+            <span>Due</span><span>${due.toFixed(2)}</span>
           </div>
-        )}
+        </div>
       </div>
 
       {header.note && (

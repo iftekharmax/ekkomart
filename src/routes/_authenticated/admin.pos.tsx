@@ -790,13 +790,14 @@ function clearAutosave() {
   try { localStorage.removeItem(AUTOSAVE_KEY); } catch { /* ignore */ }
 }
 
-function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove }: {
+function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove, container }: {
   open: boolean; onOpenChange: (o: boolean) => void; drafts: Draft[];
   onLoad: (id: string) => void; onRemove: (id: string) => void;
+  container?: HTMLElement | null;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent container={container ?? undefined} className="sm:max-w-md">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Saved drafts</DialogTitle></DialogHeader>
         {drafts.length === 0 ? (
           <div className="py-8 text-center text-sm text-slate-500">No drafts saved yet.</div>

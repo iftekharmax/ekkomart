@@ -120,7 +120,7 @@ export const listPosTodaySales = createServerFn({ method: "GET" })
     const start = new Date(); start.setHours(0, 0, 0, 0);
     const { data, error } = await context.supabase
       .from("orders")
-      .select("id,total,note,created_at")
+      .select("id,total,note,created_at, order_items(name,qty,price)")
       .eq("user_id", context.userId)
       .gte("created_at", start.toISOString())
       .order("created_at", { ascending: false });
@@ -130,12 +130,18 @@ export const listPosTodaySales = createServerFn({ method: "GET" })
     }).map((o: any) => {
       let meta: any = {};
       try { meta = JSON.parse(o.note ?? "{}"); } catch {}
+      const items = (o.order_items ?? []).map((it: any) => ({
+        name: String(it.name ?? ""), qty: Number(it.qty) || 0, price: Number(it.price) || 0,
+      }));
+      const quantity = items.reduce((s: number, it: any) => s + it.qty, 0);
       return {
         id: o.id as string,
         total: Number(o.total) || 0,
         created_at: o.created_at as string,
         payment_method: (meta.payment_method as string) ?? "cash",
         customer: (meta.customer as string) ?? null,
+        items,
+        quantity,
       };
     });
     const total = rows.reduce((s, r) => s + r.total, 0);

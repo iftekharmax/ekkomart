@@ -49,7 +49,7 @@ function PosPage() {
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
-  const [tax, setTax] = useState(0);
+  const [taxMode, setTaxMode] = useState<"default" | "free">("default");
   const [paid, setPaid] = useState(0);
   const [method, setMethod] = useState<"cash" | "card" | "mobile" | "other">("cash");
   const [customer, setCustomer] = useState("");

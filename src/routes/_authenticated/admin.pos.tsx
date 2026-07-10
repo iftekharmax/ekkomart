@@ -184,10 +184,12 @@ function PosPage() {
             })}
           </div>
         )}
+        </div>
       </section>
 
       {/* RIGHT: Cart */}
-      <aside className="flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <aside className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+
         <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
           <div className="flex items-center gap-2">
             <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">

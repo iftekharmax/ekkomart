@@ -473,7 +473,17 @@ function PosPage() {
           <div className="mt-3">
             <label className="text-xs text-slate-500">Amount received</label>
             <div className="mt-1 flex gap-2">
-              <Input type="number" min={0} value={paid} onChange={(e) => setPaid(Math.max(0, Number(e.target.value) || 0))} className="h-10 flex-1" />
+              <Input
+                type="number" min={0} value={paid}
+                onChange={(e) => setPaid(Math.max(0, Number(e.target.value) || 0))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (cart.length > 0 && paid >= total && !sale.isPending) sale.mutate();
+                  }
+                }}
+                className="h-10 flex-1"
+              />
               <Button type="button" variant="outline" className="h-10" onClick={() => setPaid(total)}>Exact</Button>
             </div>
             <div className={`mt-1 text-xs ${paid >= total ? "text-emerald-600" : "text-rose-600"}`}>

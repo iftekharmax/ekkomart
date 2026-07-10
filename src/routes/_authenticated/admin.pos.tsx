@@ -47,6 +47,13 @@ function PosPage() {
   const searchFn = useServerFn(posSearchProducts);
   const saleFn = useServerFn(createPosSale);
   const quickAddFn = useServerFn(createPosQuickProduct);
+  const historyFn = useServerFn(listPosTodaySales);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyQ = useQuery({
+    queryKey: ["pos-today-sales"],
+    queryFn: () => historyFn({}) as Promise<{ rows: { id: string; total: number; created_at: string; payment_method: string; customer: string | null }[]; total: number; count: number }>,
+    enabled: historyOpen,
+  });
 
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");

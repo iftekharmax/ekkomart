@@ -212,12 +212,36 @@ function PurchaseDetail() {
           <div className="flex justify-between border-t pt-3 text-lg font-bold">
             <span>Total</span><span>${Number(header.total).toFixed(2)}</span>
           </div>
+          {returnedTotal > 0 && (
+            <Row label={`Returned (${(returns ?? []).length})`} value={`-$${returnedTotal.toFixed(2)}`} />
+          )}
           <Row label="Paid" value={`$${Number(header.paid).toFixed(2)}`} />
           <div className={`flex justify-between text-sm font-semibold ${due > 0 ? "text-destructive" : "text-green-600"}`}>
-            <span>Due</span><span>${due.toFixed(2)}</span>
+            <span>Payable to supplier</span><span>${due.toFixed(2)}</span>
           </div>
         </div>
       </div>
+
+      {(returns ?? []).length > 0 && (
+        <div className="mt-6 overflow-hidden rounded-xl border bg-card">
+          <div className="border-b bg-muted/40 px-4 py-3 text-sm font-semibold">
+            Returns ({(returns as any[]).length}) — deducted from supplier payable
+          </div>
+          <div className="divide-y">
+            {(returns as any[]).map((r) => (
+              <Link key={r.id} to="/admin/purchase-returns/$id" params={{ id: r.id }}
+                className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-muted/30">
+                <div className="min-w-0">
+                  <div className="font-mono text-xs text-muted-foreground">{r.reference}</div>
+                  <div className="truncate">{r.return_date}{r.reason ? ` · ${r.reason}` : ""}</div>
+                </div>
+                <div className="shrink-0 font-semibold text-destructive">-${Number(r.total).toFixed(2)}</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
 
       {header.note && (
         <div className="mt-6 rounded-xl border bg-card p-6">

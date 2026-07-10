@@ -12,7 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Minus, Plus, Trash2, Search, ScanLine, ShoppingCart, Wallet, X, CheckCircle2, Package,
+  Minus, Plus, Trash2, Search, ScanLine, ShoppingCart, Wallet, X,
   Calculator as CalcIcon, Save, FileText, Delete,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -29,6 +29,19 @@ type Product = {
 type CartItem = Product & { qty: number };
 
 const money = (n: number) => `৳${n.toFixed(2)}`;
+const textOrDash = (value: unknown) => {
+  if (value == null) return "—";
+  const text = String(value).trim();
+  return text.length > 0 ? text : "—";
+};
+const stockInfo = (stock: unknown, unit: unknown) => {
+  if (stock == null || String(stock).trim() === "") return { label: "Stock: N/A", tone: "text-slate-500", out: false };
+  const qty = Number(stock);
+  const unitText = textOrDash(unit) === "—" ? "pcs" : textOrDash(unit);
+  if (!Number.isFinite(qty)) return { label: "Stock: N/A", tone: "text-slate-500", out: false };
+  if (qty <= 0) return { label: "Out of stock", tone: "text-rose-600", out: true };
+  return { label: `Stock: ${qty} ${unitText}`, tone: "text-emerald-600", out: false };
+};
 
 function PosPage() {
   const searchFn = useServerFn(posSearchProducts);
@@ -56,7 +69,6 @@ function PosPage() {
   const [drafts, setDrafts] = useState<Draft[]>(() => loadDrafts());
   const [draftsOpen, setDraftsOpen] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
-  const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const [selectedCartId, setSelectedCartId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState<null | { code: string }>(null);
   const [quickName, setQuickName] = useState("");
@@ -65,7 +77,6 @@ function PosPage() {
   const searchRef = useRef<HTMLInputElement>(null);
   const lastKeyTimeRef = useRef<number>(0);
   const bufferRef = useRef<string>("");
-  const justAddedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydratedRef = useRef(false);
   const saveDraftRef = useRef<() => void>(() => {});
 
@@ -105,12 +116,6 @@ function PosPage() {
   const total = Math.max(0, subtotal - discount + tax);
   const change = Math.max(0, paid - total);
 
-  function flashAdded(id: string) {
-    setJustAddedId(id);
-    if (justAddedTimer.current) clearTimeout(justAddedTimer.current);
-    justAddedTimer.current = setTimeout(() => setJustAddedId(null), 1200);
-  }
-
   function addToCart(p: Product) {
     let ok = true;
     setCart((prev) => {
@@ -128,7 +133,6 @@ function PosPage() {
       return [...prev, { ...p, qty: 1 }];
     });
     if (ok) {
-      flashAdded(p.id);
       toast.success(`Added: ${p.name}`, { duration: 1200 });
     }
   }
@@ -343,7 +347,8 @@ function PosPage() {
                 ) : (
                   <ul className="max-h-80 overflow-y-auto">
                     {suggestions.map((p, i) => {
-                      const out = (p.stock ?? 0) <= 0;
+                      const stock = stockInfo(p.stock, p.unit);
+                      const out = stock.out;
                       return (
                         <li key={p.id}>
                           <button
@@ -357,11 +362,9 @@ function PosPage() {
                             <div className="min-w-0 flex-1">
                               <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{p.name}</div>
                               <div className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap text-[11px] leading-tight text-slate-500">
-                                <span className="truncate">Barcode: {p.barcode?.trim() ? p.barcode : "—"}</span>
-                                <span className="text-slate-300">·</span>
-                                <span className={`shrink-0 font-semibold ${p.stock == null ? "text-slate-500" : (p.stock ?? 0) <= 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                                  {p.stock == null ? "Stock: N/A" : (p.stock ?? 0) <= 0 ? "Out of stock" : `Stock: ${p.stock} ${p.unit ?? "pcs"}`}
-                                </span>
+                                <span className="min-w-0 truncate">Barcode: {textOrDash(p.barcode)}</span>
+                                <span className="shrink-0 text-slate-300">·</span>
+                                <span className={`shrink-0 font-semibold ${stock.tone}`}>{stock.label}</span>
                               </div>
                             </div>
                             <div className="text-right">
@@ -405,7 +408,7 @@ function PosPage() {
             ) : (
               <ul className="space-y-2">
                 {cart.map((it) => (
-                  <li key={it.id} onClick={() => setSelectedCartId(it.id)} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 shadow-sm transition-all ${justAddedId === it.id ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300 dark:border-emerald-500 dark:bg-emerald-950/40" : selectedCartId === it.id ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "border-slate-200 bg-white hover:border-primary/40 dark:border-slate-800 dark:bg-slate-950"}`}>
+                  <li key={it.id} onClick={() => setSelectedCartId(it.id)} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 shadow-sm transition-all ${selectedCartId === it.id ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "border-slate-200 bg-white hover:border-primary/40 dark:border-slate-800 dark:bg-slate-950"}`}>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-semibold">{it.name}</div>
                       <div className="text-xs text-slate-500">{money(Number(it.price))} × {it.qty} = <b className="text-slate-800 dark:text-slate-100">{money(Number(it.price) * it.qty)}</b></div>

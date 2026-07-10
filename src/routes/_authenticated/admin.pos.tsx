@@ -213,13 +213,33 @@ function PosPage() {
       return { res: res as { id: string; total: number }, snapshot };
     },
     onSuccess: ({ res, snapshot }) => {
-      setReceipt(res);
       printThermalReceipt({ id: res.id, ...snapshot });
       clearAll();
-      toast.success("Sale completed");
+      toast.success(`Sale #${res.id.slice(0, 8).toUpperCase()} — ${money(res.total)}`);
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  function saveDraft() {
+    if (cart.length === 0) { toast.error("Cart is empty"); return; }
+    const d: Draft = { id: crypto.randomUUID(), at: Date.now(), cart, customer, discount, tax, method };
+    const next = [d, ...drafts].slice(0, 20);
+    setDrafts(next); persistDrafts(next);
+    clearAll();
+    toast.success("Saved as draft");
+  }
+  function loadDraft(id: string) {
+    const d = drafts.find((x) => x.id === id); if (!d) return;
+    setCart(d.cart); setCustomer(d.customer); setDiscount(d.discount); setTax(d.tax); setMethod(d.method);
+    const next = drafts.filter((x) => x.id !== id);
+    setDrafts(next); persistDrafts(next);
+    setDraftsOpen(false);
+    toast.success("Draft loaded");
+  }
+  function removeDraft(id: string) {
+    const next = drafts.filter((x) => x.id !== id);
+    setDrafts(next); persistDrafts(next);
+  }
 
 
   return (

@@ -495,7 +495,17 @@ function PosPage() {
       </aside>
 
       <DraftsDialog open={draftsOpen} onOpenChange={setDraftsOpen} drafts={drafts} onLoad={loadDraft} onRemove={removeDraft} />
-      <CalculatorDialog open={calcOpen} onOpenChange={setCalcOpen} />
+      <CalculatorDialog
+        open={calcOpen}
+        onOpenChange={setCalcOpen}
+        selectedItem={cart.find((c) => c.id === selectedCartId) ?? null}
+        onApplyQty={(n) => {
+          if (!selectedCartId) return;
+          setQty(selectedCartId, Math.max(1, Math.floor(n)));
+          toast.success(`Qty set to ${Math.max(1, Math.floor(n))}`);
+        }}
+        onApplyDiscount={(n) => { setDiscount(Math.max(0, n)); toast.success(`Discount set to ${money(Math.max(0, n))}`); }}
+      />
 
 
       <Dialog open={!!notFound} onOpenChange={(o) => !o && setNotFound(null)}>

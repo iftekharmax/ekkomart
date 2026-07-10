@@ -529,42 +529,42 @@ function PosPage() {
       </section>
 
       {/* RIGHT: Checkout */}
-      <aside className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <header className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+      <aside className="flex min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white/95 shadow-[0_10px_40px_-20px_rgba(15,23,42,0.25)] backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/90">
+        <header className="flex items-center justify-between border-b border-slate-200/70 bg-gradient-to-r from-primary/12 via-primary/5 to-transparent px-5 py-4 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-md shadow-primary/25">
               <Wallet className="h-4 w-4" />
             </span>
             <div>
-              <div className="text-sm font-bold">Checkout</div>
-              <div className="text-[11px] text-slate-500">Review & complete sale</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/70">Checkout</div>
+              <div className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">Review & complete sale</div>
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button type="button" variant="outline" size="sm" onClick={saveDraft} className="h-8 gap-1 px-2 text-xs" title="Save current cart as draft">
+            <Button type="button" variant="outline" size="sm" onClick={saveDraft} className="h-8 gap-1 rounded-lg border-slate-200 bg-white/70 px-2 text-xs font-medium dark:border-slate-700 dark:bg-slate-900/50" title="Save current cart as draft">
               <Save className="h-3.5 w-3.5" /> Draft
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setDraftsOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Open saved drafts">
+            <Button type="button" variant="outline" size="sm" onClick={() => setDraftsOpen(true)} className="h-8 gap-1 rounded-lg border-slate-200 bg-white/70 px-2 text-xs font-medium tabular-nums dark:border-slate-700 dark:bg-slate-900/50" title="Open saved drafts">
               <FileText className="h-3.5 w-3.5" /> {drafts.length}
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Today's sales history">
+            <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)} className="h-8 gap-1 rounded-lg border-slate-200 bg-white/70 px-2 text-xs font-medium dark:border-slate-700 dark:bg-slate-900/50" title="Today's sales history">
               <History className="h-3.5 w-3.5" />
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setCalcOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Calculator">
+            <Button type="button" variant="outline" size="sm" onClick={() => setCalcOpen(true)} className="h-8 gap-1 rounded-lg border-slate-200 bg-white/70 px-2 text-xs font-medium dark:border-slate-700 dark:bg-slate-900/50" title="Calculator">
               <CalcIcon className="h-3.5 w-3.5" />
             </Button>
           </div>
         </header>
 
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
-          <div className="mb-3 grid grid-cols-2 gap-2">
-            <label className="text-xs text-slate-500">Mobile number
-              <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="01XXXXXXXXX" inputMode="tel" className="mt-1 h-9" />
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          <div className="mb-4 grid grid-cols-2 gap-3">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Mobile number
+              <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="01XXXXXXXXX" inputMode="tel" className="mt-1.5 h-10 rounded-lg border-slate-200 text-sm font-medium tracking-tight dark:border-slate-700" />
             </label>
-            <label className="text-xs text-slate-500">Method
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Method
               <Select value={method} onValueChange={(v) => setMethod(v as any)}>
-                <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5 h-10 rounded-lg border-slate-200 text-sm font-medium dark:border-slate-700"><SelectValue /></SelectTrigger>
                 <SelectContent container={portalContainer}>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="card">Card</SelectItem>
@@ -573,12 +573,12 @@ function PosPage() {
                 </SelectContent>
               </Select>
             </label>
-            <label className="text-xs text-slate-500">Discount
-              <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(Math.max(0, Number(e.target.value) || 0))} className="mt-1 h-9" />
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Discount
+              <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(Math.max(0, Number(e.target.value) || 0))} className="mt-1.5 h-10 rounded-lg border-slate-200 text-sm font-semibold tabular-nums dark:border-slate-700" />
             </label>
-            <label className="text-xs text-slate-500">Tax
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Tax
               <Select value={taxMode} onValueChange={(v) => setTaxMode(v as "default" | "free")}>
-                <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5 h-10 rounded-lg border-slate-200 text-sm font-medium dark:border-slate-700"><SelectValue /></SelectTrigger>
                 <SelectContent container={portalContainer}>
                   <SelectItem value="default">Default (8%)</SelectItem>
                   <SelectItem value="free">Tax free</SelectItem>
@@ -587,17 +587,17 @@ function PosPage() {
             </label>
           </div>
 
-          <div className="space-y-1 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-950">
-            <Row label="Subtotal" value={money(subtotal)} />
-            <Row label="Discount" value={`− ${money(discount)}`} />
-            <Row label={taxMode === "default" ? "Tax (8%)" : "Tax (free)"} value={`+ ${money(tax)}`} />
-            <div className="my-1 border-t border-dashed border-slate-200 dark:border-slate-800" />
-            <Row label={<span className="font-bold text-slate-900 dark:text-slate-100">Total</span>} value={<span className="text-lg font-black text-primary">{money(total)}</span>} />
+          <div className="space-y-1.5 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-slate-50 to-white p-4 text-sm tabular-nums dark:border-slate-800 dark:from-slate-950 dark:to-slate-900">
+            <Row label={<span className="text-slate-500">Subtotal</span>} value={<span className="font-medium text-slate-700 dark:text-slate-200">{money(subtotal)}</span>} />
+            <Row label={<span className="text-slate-500">Discount</span>} value={<span className="font-medium text-rose-600">− {money(discount)}</span>} />
+            <Row label={<span className="text-slate-500">{taxMode === "default" ? "Tax (8%)" : "Tax (free)"}</span>} value={<span className="font-medium text-slate-700 dark:text-slate-200">+ {money(tax)}</span>} />
+            <div className="my-2 border-t border-dashed border-slate-200 dark:border-slate-800" />
+            <Row label={<span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Total due</span>} value={<span className="text-2xl font-bold tracking-tight text-primary">{money(total)}</span>} />
           </div>
 
-          <div className="mt-3">
-            <label className="text-xs text-slate-500">Amount received</label>
-            <div className="mt-1 flex gap-2">
+          <div className="mt-4">
+            <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Amount received</label>
+            <div className="mt-1.5 flex gap-2">
               <Input
                 type="number" min={0} value={paid}
                 onChange={(e) => setPaid(Math.max(0, Number(e.target.value) || 0))}
@@ -607,21 +607,21 @@ function PosPage() {
                     if (cart.length > 0 && paid >= total && !sale.isPending) sale.mutate();
                   }
                 }}
-                className="h-10 flex-1"
+                className="h-11 flex-1 rounded-lg border-slate-200 text-base font-semibold tabular-nums dark:border-slate-700"
               />
-              <Button type="button" variant="outline" className="h-10" onClick={() => setPaid(total)}>Exact</Button>
+              <Button type="button" variant="outline" className="h-11 rounded-lg border-slate-200 px-4 font-semibold dark:border-slate-700" onClick={() => setPaid(total)}>Exact</Button>
             </div>
-            <div className={`mt-1 text-xs ${paid >= total ? "text-emerald-600" : "text-rose-600"}`}>
-              {paid >= total ? `Change: ${money(change)}` : `Remaining: ${money(total - paid)}`}
+            <div className={`mt-2 rounded-lg px-3 py-2 text-xs font-semibold tabular-nums ${paid >= total ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"}`}>
+              {paid >= total ? `Change to return: ${money(change)}` : `Remaining: ${money(total - paid)}`}
             </div>
           </div>
         </div>
 
-        <div className="border-t border-slate-200 p-4 dark:border-slate-800">
+        <div className="border-t border-slate-200/70 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/30">
           <Button
             onClick={() => sale.mutate()}
             disabled={sale.isPending || cart.length === 0 || paid < total}
-            className="h-12 w-full text-base font-bold"
+            className="h-14 w-full rounded-xl bg-gradient-to-r from-primary to-primary/85 text-base font-semibold tracking-tight shadow-lg shadow-primary/25 transition hover:shadow-xl hover:shadow-primary/30 disabled:opacity-60 disabled:shadow-none"
           >
             <Wallet className="mr-2 h-5 w-5" />
             {sale.isPending ? "Processing…" : `Pay · ${money(total)}`}

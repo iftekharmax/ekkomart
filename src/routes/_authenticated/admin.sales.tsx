@@ -461,15 +461,11 @@ function SaleDetailsDialog({
         <DialogFooter className="border-t bg-muted/20 px-6 py-3">
           <Button variant="outline" onClick={onClose}>Close</Button>
           {data && (
-            <>
-              <Button variant="outline" onClick={() => printThermalReceipt(data)}>
-                <Printer className="mr-1 h-4 w-4" />Print
-              </Button>
-              <Button onClick={() => onOpenFull(data.id)}>
-                Open full page<ArrowRight className="ml-1 h-4 w-4" />
-              </Button>
-            </>
+            <Button variant="outline" onClick={() => printThermalReceipt(data)}>
+              <Printer className="mr-1 h-4 w-4" />Print
+            </Button>
           )}
+
         </DialogFooter>
       </DialogContent>
     </Dialog>

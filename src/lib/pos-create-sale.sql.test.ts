@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const migrationSql = readFileSync(
-  join(process.cwd(), "supabase/migrations/20260710230421_d11ef1ad-7521-47e6-817d-de3c2201b25b.sql"),
+  join(process.cwd(), "supabase/migrations/20260710230620_f80dac4c-8db5-4424-ac00-4c52ab654928.sql"),
   "utf8",
 );
 

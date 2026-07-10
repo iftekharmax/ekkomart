@@ -43,6 +43,8 @@ import { Route as AuthenticatedAdminSuppliersNewRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminSubcategoriesNewRouteImport } from './routes/_authenticated/admin.subcategories.new'
 import { Route as AuthenticatedAdminPurchasesNewRouteImport } from './routes/_authenticated/admin.purchases.new'
 import { Route as AuthenticatedAdminPurchasesIdRouteImport } from './routes/_authenticated/admin.purchases.$id'
+import { Route as AuthenticatedAdminPurchaseReturnsNewRouteImport } from './routes/_authenticated/admin.purchase-returns.new'
+import { Route as AuthenticatedAdminPurchaseReturnsIdRouteImport } from './routes/_authenticated/admin.purchase-returns.$id'
 import { Route as AuthenticatedAdminProductsNewRouteImport } from './routes/_authenticated/admin.products.new'
 import { Route as AuthenticatedAdminCategoriesNewRouteImport } from './routes/_authenticated/admin.categories.new'
 import { Route as AuthenticatedAdminBrandsNewRouteImport } from './routes/_authenticated/admin.brands.new'
@@ -240,6 +242,18 @@ const AuthenticatedAdminPurchasesIdRoute =
     path: '/purchases/$id',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminPurchaseReturnsNewRoute =
+  AuthenticatedAdminPurchaseReturnsNewRouteImport.update({
+    id: '/purchase-returns/new',
+    path: '/purchase-returns/new',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPurchaseReturnsIdRoute =
+  AuthenticatedAdminPurchaseReturnsIdRouteImport.update({
+    id: '/purchase-returns/$id',
+    path: '/purchase-returns/$id',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminProductsNewRoute =
   AuthenticatedAdminProductsNewRouteImport.update({
     id: '/products/new',
@@ -330,6 +344,8 @@ export interface FileRoutesByFullPath {
   '/admin/brands/new': typeof AuthenticatedAdminBrandsNewRoute
   '/admin/categories/new': typeof AuthenticatedAdminCategoriesNewRoute
   '/admin/products/new': typeof AuthenticatedAdminProductsNewRoute
+  '/admin/purchase-returns/$id': typeof AuthenticatedAdminPurchaseReturnsIdRoute
+  '/admin/purchase-returns/new': typeof AuthenticatedAdminPurchaseReturnsNewRoute
   '/admin/purchases/$id': typeof AuthenticatedAdminPurchasesIdRoute
   '/admin/purchases/new': typeof AuthenticatedAdminPurchasesNewRoute
   '/admin/subcategories/new': typeof AuthenticatedAdminSubcategoriesNewRoute
@@ -375,6 +391,8 @@ export interface FileRoutesByTo {
   '/admin/brands/new': typeof AuthenticatedAdminBrandsNewRoute
   '/admin/categories/new': typeof AuthenticatedAdminCategoriesNewRoute
   '/admin/products/new': typeof AuthenticatedAdminProductsNewRoute
+  '/admin/purchase-returns/$id': typeof AuthenticatedAdminPurchaseReturnsIdRoute
+  '/admin/purchase-returns/new': typeof AuthenticatedAdminPurchaseReturnsNewRoute
   '/admin/purchases/$id': typeof AuthenticatedAdminPurchasesIdRoute
   '/admin/purchases/new': typeof AuthenticatedAdminPurchasesNewRoute
   '/admin/subcategories/new': typeof AuthenticatedAdminSubcategoriesNewRoute
@@ -423,6 +441,8 @@ export interface FileRoutesById {
   '/_authenticated/admin/brands/new': typeof AuthenticatedAdminBrandsNewRoute
   '/_authenticated/admin/categories/new': typeof AuthenticatedAdminCategoriesNewRoute
   '/_authenticated/admin/products/new': typeof AuthenticatedAdminProductsNewRoute
+  '/_authenticated/admin/purchase-returns/$id': typeof AuthenticatedAdminPurchaseReturnsIdRoute
+  '/_authenticated/admin/purchase-returns/new': typeof AuthenticatedAdminPurchaseReturnsNewRoute
   '/_authenticated/admin/purchases/$id': typeof AuthenticatedAdminPurchasesIdRoute
   '/_authenticated/admin/purchases/new': typeof AuthenticatedAdminPurchasesNewRoute
   '/_authenticated/admin/subcategories/new': typeof AuthenticatedAdminSubcategoriesNewRoute
@@ -471,6 +491,8 @@ export interface FileRouteTypes {
     | '/admin/brands/new'
     | '/admin/categories/new'
     | '/admin/products/new'
+    | '/admin/purchase-returns/$id'
+    | '/admin/purchase-returns/new'
     | '/admin/purchases/$id'
     | '/admin/purchases/new'
     | '/admin/subcategories/new'
@@ -516,6 +538,8 @@ export interface FileRouteTypes {
     | '/admin/brands/new'
     | '/admin/categories/new'
     | '/admin/products/new'
+    | '/admin/purchase-returns/$id'
+    | '/admin/purchase-returns/new'
     | '/admin/purchases/$id'
     | '/admin/purchases/new'
     | '/admin/subcategories/new'
@@ -563,6 +587,8 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/brands/new'
     | '/_authenticated/admin/categories/new'
     | '/_authenticated/admin/products/new'
+    | '/_authenticated/admin/purchase-returns/$id'
+    | '/_authenticated/admin/purchase-returns/new'
     | '/_authenticated/admin/purchases/$id'
     | '/_authenticated/admin/purchases/new'
     | '/_authenticated/admin/subcategories/new'
@@ -842,6 +868,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminPurchasesIdRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/purchase-returns/new': {
+      id: '/_authenticated/admin/purchase-returns/new'
+      path: '/purchase-returns/new'
+      fullPath: '/admin/purchase-returns/new'
+      preLoaderRoute: typeof AuthenticatedAdminPurchaseReturnsNewRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/purchase-returns/$id': {
+      id: '/_authenticated/admin/purchase-returns/$id'
+      path: '/purchase-returns/$id'
+      fullPath: '/admin/purchase-returns/$id'
+      preLoaderRoute: typeof AuthenticatedAdminPurchaseReturnsIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/products/new': {
       id: '/_authenticated/admin/products/new'
       path: '/products/new'
@@ -930,6 +970,8 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminBrandsNewRoute: typeof AuthenticatedAdminBrandsNewRoute
   AuthenticatedAdminCategoriesNewRoute: typeof AuthenticatedAdminCategoriesNewRoute
   AuthenticatedAdminProductsNewRoute: typeof AuthenticatedAdminProductsNewRoute
+  AuthenticatedAdminPurchaseReturnsIdRoute: typeof AuthenticatedAdminPurchaseReturnsIdRoute
+  AuthenticatedAdminPurchaseReturnsNewRoute: typeof AuthenticatedAdminPurchaseReturnsNewRoute
   AuthenticatedAdminPurchasesIdRoute: typeof AuthenticatedAdminPurchasesIdRoute
   AuthenticatedAdminPurchasesNewRoute: typeof AuthenticatedAdminPurchasesNewRoute
   AuthenticatedAdminSubcategoriesNewRoute: typeof AuthenticatedAdminSubcategoriesNewRoute
@@ -962,6 +1004,10 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminBrandsNewRoute: AuthenticatedAdminBrandsNewRoute,
   AuthenticatedAdminCategoriesNewRoute: AuthenticatedAdminCategoriesNewRoute,
   AuthenticatedAdminProductsNewRoute: AuthenticatedAdminProductsNewRoute,
+  AuthenticatedAdminPurchaseReturnsIdRoute:
+    AuthenticatedAdminPurchaseReturnsIdRoute,
+  AuthenticatedAdminPurchaseReturnsNewRoute:
+    AuthenticatedAdminPurchaseReturnsNewRoute,
   AuthenticatedAdminPurchasesIdRoute: AuthenticatedAdminPurchasesIdRoute,
   AuthenticatedAdminPurchasesNewRoute: AuthenticatedAdminPurchasesNewRoute,
   AuthenticatedAdminSubcategoriesNewRoute:

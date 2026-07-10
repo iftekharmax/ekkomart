@@ -556,7 +556,7 @@ function PosPage() {
             <label className="text-xs text-slate-500">Tax
               <Select value={taxMode} onValueChange={(v) => setTaxMode(v as "default" | "free")}>
                 <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent container={portalContainer}>
                   <SelectItem value="default">Default (8%)</SelectItem>
                   <SelectItem value="free">Tax free</SelectItem>
                 </SelectContent>

@@ -58,7 +58,7 @@ export const listPurchases = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context);
     const { data, error } = await (context.supabase.from("purchases" as any) as any)
-      .select("*, supplier:suppliers(name), items:purchase_items(id,quantity,line_total)")
+      .select("*, supplier:suppliers(name), items:purchase_items(id,quantity,line_total,product:products(name),variation:product_variations(name))")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];

@@ -446,6 +446,39 @@ function PosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!notFound} onOpenChange={(o) => !o && setNotFound(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-primary" /> Product not found</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="rounded-lg bg-amber-50 p-3 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+              No product matched <b>"{notFound?.code}"</b>. Add it now to continue checkout.
+            </div>
+            <label className="block text-xs text-slate-500">Name
+              <Input autoFocus value={quickName} onChange={(e) => setQuickName(e.target.value)} placeholder="Product name" className="mt-1 h-9" />
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block text-xs text-slate-500">Price
+                <Input type="number" min={0} step="0.01" value={quickPrice} onChange={(e) => setQuickPrice(Math.max(0, Number(e.target.value) || 0))} className="mt-1 h-9" />
+              </label>
+              <label className="block text-xs text-slate-500">Stock
+                <Input type="number" min={0} value={quickStock} onChange={(e) => setQuickStock(Math.max(0, Number(e.target.value) || 0))} className="mt-1 h-9" />
+              </label>
+            </div>
+            <div className="text-[11px] text-slate-500">
+              {/^\d{6,}$/.test(notFound?.code ?? "") ? "Saved as barcode." : "Saved as SKU."}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNotFound(null)}>Cancel</Button>
+            <Button disabled={quickAdd.isPending || !quickName.trim()} onClick={() => quickAdd.mutate()}>
+              {quickAdd.isPending ? "Adding…" : "Create & add"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

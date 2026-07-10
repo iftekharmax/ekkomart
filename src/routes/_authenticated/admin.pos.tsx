@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Minus, Plus, Trash2, Search, ScanLine, ShoppingCart, Wallet, X,
-  Calculator as CalcIcon, Save, FileText, Delete,
+  Calculator as CalcIcon, Save, FileText, Delete, Maximize2, Minimize2,
 } from "lucide-react";
 import { toast } from "sonner";
 

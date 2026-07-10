@@ -352,7 +352,7 @@ function SalesPage() {
               onClick={(e) => { e.preventDefault(); if (confirmSale) del.mutate(confirmSale.id); }}
               className="bg-rose-600 text-white hover:bg-rose-700"
             >
-              {del.isPending ? "Deleting…" : "Delete"}
+              {del.isPending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Deleting…</> : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

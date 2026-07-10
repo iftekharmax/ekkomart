@@ -63,9 +63,16 @@ function PurchaseDetail() {
             {header.purchase_date} · {header.supplier?.name ?? "No supplier"}
           </p>
         </div>
-        <Button variant="outline" onClick={() => {
-          if (confirm("Delete purchase? Stock will be decreased.")) del.mutate();
-        }}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
+        <div className="flex gap-2">
+          {due > 0 && (
+            <Button onClick={() => { setPayAmount(due); setPayOpen(true); }}>
+              <DollarSign className="mr-2 h-4 w-4" /> Pay due
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => {
+            if (confirm("Delete purchase? Stock will be decreased.")) del.mutate();
+          }}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border bg-card">

@@ -448,27 +448,9 @@ function PosPage() {
         </div>
       </aside>
 
-      <Dialog open={!!receipt} onOpenChange={(o) => !o && setReceipt(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-emerald-600" /> Sale completed</DialogTitle>
-          </DialogHeader>
-          {receipt && (
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-slate-500"><Receipt className="h-4 w-4" /> Sale ID</div>
-              <div className="rounded-lg bg-slate-50 p-2 font-mono text-xs dark:bg-slate-900">{receipt.id}</div>
-              <div className="flex items-center justify-between rounded-lg bg-primary/10 p-3">
-                <span className="text-sm font-semibold">Total</span>
-                <span className="text-lg font-black text-primary">{money(receipt.total)}</span>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => window.print()}>Print</Button>
-            <Button onClick={() => { setReceipt(null); searchRef.current?.focus(); }}>New sale</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DraftsDialog open={draftsOpen} onOpenChange={setDraftsOpen} drafts={drafts} onLoad={loadDraft} onRemove={removeDraft} />
+      <CalculatorDialog open={calcOpen} onOpenChange={setCalcOpen} />
+
 
       <Dialog open={!!notFound} onOpenChange={(o) => !o && setNotFound(null)}>
         <DialogContent className="sm:max-w-md">

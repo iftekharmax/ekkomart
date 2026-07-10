@@ -334,8 +334,9 @@ function PosPage() {
   }, []);
   const toggleFullscreen = async () => {
     if (fsBusyRef.current) return;
-    const el = posRootRef.current;
-    if (!el) return;
+    // Fullscreen the root <html> so Radix portals (Select, Dialog, Toaster)
+    // stay inside the fullscreen element and remain interactive.
+    const el = document.documentElement;
     if (typeof el.requestFullscreen !== "function" || typeof document.exitFullscreen !== "function") {
       toast.message("Fullscreen isn’t supported in this browser.");
       return;

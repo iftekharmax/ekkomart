@@ -201,8 +201,9 @@ function SalesPage() {
           >
             <X className="mr-1 h-4 w-4" />Clear
           </Button>
-          <Button variant="outline" className="h-11 rounded-xl" onClick={exportCsv} aria-label="Export CSV">
-            <Download className="mr-1 h-4 w-4" />Export
+          <Button variant="outline" className="h-11 rounded-xl" onClick={exportCsv} disabled={isExporting || filtered.length === 0} aria-label="Export all filtered sales to CSV">
+            {isExporting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Download className="mr-1 h-4 w-4" />}
+            {isExporting ? "Exporting…" : `Export (${filtered.length})`}
           </Button>
         </div>
       </div>

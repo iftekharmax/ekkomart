@@ -167,10 +167,14 @@ function PosPage() {
     setCart((prev) => prev.flatMap((it) => {
       if (it.id !== id) return [it];
       if (qty <= 0) return [];
-      if (it.stock != null && qty > it.stock) { toast.error(`Only ${it.stock} in stock`); return [it]; }
+      if (it.stock != null && qty > it.stock) {
+        toast.error(`Insufficient stock for “${it.name}”`, { description: `Only ${it.stock} available` });
+        return [it];
+      }
       return [{ ...it, qty }];
     }));
   }
+
   function remove(id: string) { setCart((prev) => prev.filter((i) => i.id !== id)); }
   function clearAll() { setCart([]); setDiscount(0); setTaxMode("default"); setPaid(0); setCustomer(""); }
 

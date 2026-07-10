@@ -57,6 +57,7 @@ function PosPage() {
   const [draftsOpen, setDraftsOpen] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  const [selectedCartId, setSelectedCartId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState<null | { code: string }>(null);
   const [quickName, setQuickName] = useState("");
   const [quickPrice, setQuickPrice] = useState<number>(0);
@@ -65,8 +66,29 @@ function PosPage() {
   const lastKeyTimeRef = useRef<number>(0);
   const bufferRef = useRef<string>("");
   const justAddedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hydratedRef = useRef(false);
 
-  useEffect(() => { searchRef.current?.focus(); }, []);
+  // Restore auto-saved cart once on mount
+  useEffect(() => {
+    const auto = loadAutosave();
+    if (auto && auto.cart.length > 0) {
+      setCart(auto.cart.map((c) => ({ ...c, price: Number(c.price), qty: Number(c.qty) })));
+      setCustomer(auto.customer ?? "");
+      setDiscount(Number(auto.discount) || 0);
+      setTax(Number(auto.tax) || 0);
+      setMethod(auto.method ?? "cash");
+      toast.message("Restored unsaved cart");
+    }
+    hydratedRef.current = true;
+    searchRef.current?.focus();
+  }, []);
+
+  // Auto-save cart whenever it changes
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (cart.length === 0) { clearAutosave(); return; }
+    persistAutosave({ cart, customer, discount, tax, method });
+  }, [cart, customer, discount, tax, method]);
 
   const subtotal = useMemo(() => cart.reduce((s, it) => s + it.price * it.qty, 0), [cart]);
   const total = Math.max(0, subtotal - discount + tax);
@@ -201,36 +223,48 @@ function PosPage() {
     mutationFn: async () => {
       if (cart.length === 0) throw new Error("Cart is empty");
       if (paid < total) throw new Error("Paid amount is less than total");
+      const items = cart.map((c) => ({
+        product_id: String(c.id),
+        name: String(c.name),
+        price: Number(c.price) || 0,
+        qty: Math.max(1, Math.floor(Number(c.qty) || 1)),
+        img: c.img ?? null,
+      }));
       const snapshot = {
-        items: cart.map((c) => ({ name: c.name, price: Number(c.price), qty: c.qty })),
-        subtotal, discount, tax, total, paid, change, method,
-        customer: customer || "Walk-in",
+        items: items.map((i) => ({ name: i.name, price: i.price, qty: i.qty })),
+        subtotal, discount: Number(discount) || 0, tax: Number(tax) || 0, total,
+        paid: Number(paid) || 0, change, method, customer: customer || "Walk-in",
       };
       const res = await saleFn({ data: {
-        items: cart.map((c) => ({ product_id: c.id, name: c.name, price: c.price, qty: c.qty, img: c.img })),
-        discount, tax, paid, payment_method: method, customer: customer || null,
+        items, discount: Number(discount) || 0, tax: Number(tax) || 0,
+        paid: Number(paid) || 0, payment_method: method, customer: customer || null,
       } });
       return { res: res as { id: string; total: number }, snapshot };
     },
     onSuccess: ({ res, snapshot }) => {
       printThermalReceipt({ id: res.id, ...snapshot });
       clearAll();
+      clearAutosave();
       toast.success(`Sale #${res.id.slice(0, 8).toUpperCase()} — ${money(res.total)}`);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || "Sale failed"),
   });
 
   function saveDraft() {
     if (cart.length === 0) { toast.error("Cart is empty"); return; }
-    const d: Draft = { id: crypto.randomUUID(), at: Date.now(), cart, customer, discount, tax, method };
+    const defaultName = `${customer || "Walk-in"} · ${cart.length} items · ${money(subtotal)}`;
+    const name = window.prompt("Name this draft", defaultName)?.trim() || defaultName;
+    const d: Draft = { id: crypto.randomUUID(), at: Date.now(), name, cart, customer, discount, tax, method };
     const next = [d, ...drafts].slice(0, 20);
     setDrafts(next); persistDrafts(next);
     clearAll();
-    toast.success("Saved as draft");
+    toast.success(`Draft saved: ${name}`);
   }
   function loadDraft(id: string) {
     const d = drafts.find((x) => x.id === id); if (!d) return;
-    setCart(d.cart); setCustomer(d.customer); setDiscount(d.discount); setTax(d.tax); setMethod(d.method);
+    setCart(d.cart.map((c) => ({ ...c, price: Number(c.price), qty: Number(c.qty) })));
+    setCustomer(d.customer); setDiscount(Number(d.discount) || 0); setTax(Number(d.tax) || 0); setMethod(d.method);
+    setPaid(0);
     const next = drafts.filter((x) => x.id !== id);
     setDrafts(next); persistDrafts(next);
     setDraftsOpen(false);
@@ -347,7 +381,7 @@ function PosPage() {
             ) : (
               <ul className="space-y-2">
                 {cart.map((it) => (
-                  <li key={it.id} className={`flex items-center gap-3 rounded-xl border p-3 shadow-sm transition-all ${justAddedId === it.id ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300 dark:border-emerald-500 dark:bg-emerald-950/40" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"}`}>
+                  <li key={it.id} onClick={() => setSelectedCartId(it.id)} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 shadow-sm transition-all ${justAddedId === it.id ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300 dark:border-emerald-500 dark:bg-emerald-950/40" : selectedCartId === it.id ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "border-slate-200 bg-white hover:border-primary/40 dark:border-slate-800 dark:bg-slate-950"}`}>
                     {justAddedId === it.id && (
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
                     )}
@@ -439,7 +473,17 @@ function PosPage() {
           <div className="mt-3">
             <label className="text-xs text-slate-500">Amount received</label>
             <div className="mt-1 flex gap-2">
-              <Input type="number" min={0} value={paid} onChange={(e) => setPaid(Math.max(0, Number(e.target.value) || 0))} className="h-10 flex-1" />
+              <Input
+                type="number" min={0} value={paid}
+                onChange={(e) => setPaid(Math.max(0, Number(e.target.value) || 0))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (cart.length > 0 && paid >= total && !sale.isPending) sale.mutate();
+                  }
+                }}
+                className="h-10 flex-1"
+              />
               <Button type="button" variant="outline" className="h-10" onClick={() => setPaid(total)}>Exact</Button>
             </div>
             <div className={`mt-1 text-xs ${paid >= total ? "text-emerald-600" : "text-rose-600"}`}>
@@ -461,7 +505,17 @@ function PosPage() {
       </aside>
 
       <DraftsDialog open={draftsOpen} onOpenChange={setDraftsOpen} drafts={drafts} onLoad={loadDraft} onRemove={removeDraft} />
-      <CalculatorDialog open={calcOpen} onOpenChange={setCalcOpen} />
+      <CalculatorDialog
+        open={calcOpen}
+        onOpenChange={setCalcOpen}
+        selectedItem={cart.find((c) => c.id === selectedCartId) ?? null}
+        onApplyQty={(n) => {
+          if (!selectedCartId) return;
+          setQty(selectedCartId, Math.max(1, Math.floor(n)));
+          toast.success(`Qty set to ${Math.max(1, Math.floor(n))}`);
+        }}
+        onApplyDiscount={(n) => { setDiscount(Math.max(0, n)); toast.success(`Discount set to ${money(Math.max(0, n))}`); }}
+      />
 
 
       <Dialog open={!!notFound} onOpenChange={(o) => !o && setNotFound(null)}>
@@ -606,16 +660,28 @@ function escapeHtml(s: string) {
 
 // ============ Drafts (localStorage) ============
 type Draft = {
-  id: string; at: number; cart: CartItem[]; customer: string;
+  id: string; at: number; name?: string; cart: CartItem[]; customer: string;
   discount: number; tax: number; method: "cash" | "card" | "mobile" | "other";
 };
 const DRAFTS_KEY = "pos.drafts.v1";
+const AUTOSAVE_KEY = "pos.autosave.v1";
 function loadDrafts(): Draft[] {
   if (typeof window === "undefined") return [];
   try { return JSON.parse(localStorage.getItem(DRAFTS_KEY) || "[]"); } catch { return []; }
 }
 function persistDrafts(d: Draft[]) {
-  try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(d)); } catch {}
+  try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(d)); } catch { /* ignore */ }
+}
+type AutosaveShape = Omit<Draft, "id" | "at" | "name">;
+function loadAutosave(): AutosaveShape | null {
+  if (typeof window === "undefined") return null;
+  try { const raw = localStorage.getItem(AUTOSAVE_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+function persistAutosave(d: AutosaveShape) {
+  try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(d)); } catch { /* ignore */ }
+}
+function clearAutosave() {
+  try { localStorage.removeItem(AUTOSAVE_KEY); } catch { /* ignore */ }
 }
 
 function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove }: {
@@ -635,11 +701,11 @@ function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove }: {
               return (
                 <li key={d.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold">{d.customer || "Walk-in"} · {d.cart.length} items</div>
-                    <div className="text-[11px] text-slate-500">{new Date(d.at).toLocaleString()} · {money(Math.max(0, total))}</div>
+                    <div className="truncate text-sm font-semibold">{d.name || `${d.customer || "Walk-in"} · ${d.cart.length} items`}</div>
+                    <div className="text-[11px] text-slate-500">{new Date(d.at).toLocaleString()} · {d.cart.length} items · {money(Math.max(0, total))}</div>
                   </div>
                   <Button size="sm" onClick={() => onLoad(d.id)}>Load</Button>
-                  <Button size="sm" variant="outline" onClick={() => onRemove(d.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                  <Button size="sm" variant="outline" title="Delete draft" onClick={() => onRemove(d.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </li>
               );
             })}
@@ -651,7 +717,12 @@ function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove }: {
 }
 
 // ============ Calculator ============
-function CalculatorDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+function CalculatorDialog({ open, onOpenChange, selectedItem, onApplyQty, onApplyDiscount }: {
+  open: boolean; onOpenChange: (o: boolean) => void;
+  selectedItem: CartItem | null;
+  onApplyQty: (n: number) => void;
+  onApplyDiscount: (n: number) => void;
+}) {
   const [expr, setExpr] = useState("");
   const [result, setResult] = useState("0");
 
@@ -687,6 +758,9 @@ function CalculatorDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
     { k: "=", on: evaluate, cls: "bg-primary text-primary-foreground hover:bg-primary/90" },
   ];
 
+  const resultNum = Number(result);
+  const canApply = Number.isFinite(resultNum) && result !== "Error";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xs">
@@ -705,6 +779,25 @@ function CalculatorDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
               {b.label ?? b.k}
             </button>
           ))}
+        </div>
+        <div className="mt-1 rounded-lg border border-dashed border-slate-200 p-2 dark:border-slate-700">
+          <div className="mb-2 text-[11px] text-slate-500">
+            {selectedItem
+              ? <>Apply <b className="tabular-nums">{result}</b> to <b className="truncate">{selectedItem.name}</b></>
+              : <>Select a cart item to apply as quantity, or apply as discount.</>}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm" variant="outline" className="flex-1"
+              disabled={!canApply || !selectedItem}
+              onClick={() => { onApplyQty(resultNum); onOpenChange(false); }}
+            >Set Qty</Button>
+            <Button
+              size="sm" className="flex-1"
+              disabled={!canApply}
+              onClick={() => { onApplyDiscount(resultNum); onOpenChange(false); }}
+            >Set Discount</Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

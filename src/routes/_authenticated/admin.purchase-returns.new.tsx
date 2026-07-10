@@ -36,10 +36,19 @@ function NewReturnPage() {
   const { data: purchases = [] } = useQuery({ queryKey: ["admin-purchases"], queryFn: () => listFn() });
 
   const [purchaseId, setPurchaseId] = useState<string>("");
+  const [purchaseSearch, setPurchaseSearch] = useState("");
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [reference, setReference] = useState("");
   const [reason, setReason] = useState("");
   const [items, setItems] = useState<Line[]>([]);
+
+  const filteredPurchases = useMemo(() => {
+    const q = purchaseSearch.trim().toLowerCase();
+    if (!q) return purchases as any[];
+    return (purchases as any[]).filter((p) =>
+      [p.reference, p.supplier?.name, p.purchase_date].filter(Boolean).join(" ").toLowerCase().includes(q)
+    );
+  }, [purchases, purchaseSearch]);
 
   const { data: purchaseDetail } = useQuery({
     queryKey: ["admin-purchase-detail", purchaseId],

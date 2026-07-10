@@ -12,7 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Minus, Plus, Trash2, Search, ScanLine, ShoppingCart, Wallet, X, Receipt, CheckCircle2,
+  Minus, Plus, Trash2, Search, ScanLine, ShoppingCart, Wallet, X, Receipt, CheckCircle2, Package,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,11 +35,14 @@ function PosPage() {
 
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
-  useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 200); return () => clearTimeout(t); }, [q]);
+  const [open, setOpen] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(0);
+  useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 150); return () => clearTimeout(t); }, [q]);
 
-  const { data: products = [], isFetching } = useQuery({
-    queryKey: ["pos-products", debouncedQ],
-    queryFn: () => searchFn({ data: { q: debouncedQ, limit: 36 } }) as Promise<Product[]>,
+  const { data: suggestions = [], isFetching } = useQuery({
+    queryKey: ["pos-suggest", debouncedQ],
+    queryFn: () => searchFn({ data: { q: debouncedQ, limit: 8 } }) as Promise<Product[]>,
+    enabled: debouncedQ.trim().length > 0,
   });
 
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -50,6 +53,8 @@ function PosPage() {
   const [customer, setCustomer] = useState("");
   const [receipt, setReceipt] = useState<null | { id: string; total: number }>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const lastKeyTimeRef = useRef<number>(0);
+  const bufferRef = useRef<string>("");
 
   useEffect(() => { searchRef.current?.focus(); }, []);
 
@@ -73,6 +78,7 @@ function PosPage() {
       if (p.stock != null && p.stock <= 0) { toast.error("Out of stock"); return prev; }
       return [...prev, { ...p, qty: 1 }];
     });
+    toast.success(`Added: ${p.name}`, { duration: 1200 });
   }
   function setQty(id: string, qty: number) {
     setCart((prev) => prev.flatMap((it) => {
@@ -85,15 +91,53 @@ function PosPage() {
   function remove(id: string) { setCart((prev) => prev.filter((i) => i.id !== id)); }
   function clearAll() { setCart([]); setDiscount(0); setTax(0); setPaid(0); setCustomer(""); }
 
-  // Barcode-scan behavior: Enter on search field with exact match → add.
+  // Hardware barcode scanner: emits keys very fast + Enter. Detect by inter-key timing.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isFormEl = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (target?.isContentEditable ?? false);
+      // Allow scanner to work only when focus isn't on a numeric/other input (search input handled separately)
+      if (isFormEl && target !== searchRef.current) return;
+
+      const now = Date.now();
+      const gap = now - lastKeyTimeRef.current;
+      lastKeyTimeRef.current = now;
+
+      if (e.key === "Enter") {
+        const code = bufferRef.current.trim();
+        bufferRef.current = "";
+        if (code.length >= 3) {
+          // Look up in suggestions or fetch directly
+          void (async () => {
+            const rows = (await searchFn({ data: { q: code, limit: 5 } })) as Product[];
+            const exact = rows.find((p) => (p.barcode ?? "").toLowerCase() === code.toLowerCase() || (p.sku ?? "").toLowerCase() === code.toLowerCase()) ?? rows[0];
+            if (exact) { addToCart(exact); setQ(""); setOpen(false); }
+            else toast.error(`No product for "${code}"`);
+          })();
+        }
+        return;
+      }
+      if (e.key.length === 1) {
+        // Reset buffer if pause > 60ms (human typing)
+        if (gap > 60) bufferRef.current = "";
+        bufferRef.current += e.key;
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [searchFn]);
+
   function onSearchKey(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key !== "Enter") return;
-    const term = q.trim().toLowerCase();
-    if (!term) return;
-    const exact = (products as Product[]).find(
-      (p) => (p.barcode ?? "").toLowerCase() === term || (p.sku ?? "").toLowerCase() === term,
-    );
-    if (exact) { addToCart(exact); setQ(""); }
+    if (!open && suggestions.length > 0 && (e.key === "ArrowDown" || e.key === "ArrowUp")) setOpen(true);
+    if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, 0)); }
+    else if (e.key === "Escape") { setOpen(false); }
+    else if (e.key === "Enter") {
+      // Manual pick from suggestions (scanner path handled via global listener + short gap)
+      const picked = suggestions[activeIdx];
+      if (picked) { addToCart(picked); setQ(""); setOpen(false); setActiveIdx(0); }
+    }
   }
 
   const sale = useMutation({
@@ -115,132 +159,153 @@ function PosPage() {
   });
 
   return (
-    <div className="-m-4 grid gap-4 p-4 sm:-m-6 sm:p-6 lg:-m-8 lg:h-[calc(100dvh-2rem)] lg:grid-cols-[minmax(0,1fr)_400px] lg:overflow-hidden lg:p-6">
-      {/* LEFT: Products */}
+    <div className="-m-4 grid gap-4 p-4 sm:-m-6 sm:p-6 lg:-m-8 lg:h-[calc(100dvh-2rem)] lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden lg:p-6">
+      {/* LEFT: Scan/Search + Cart items summary */}
       <section className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="border-b border-slate-200 bg-gradient-to-r from-primary/5 to-transparent p-4 dark:border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <Input
-                ref={searchRef}
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                onKeyDown={onSearchKey}
-                placeholder="Search or scan barcode / SKU / name…"
-                className="h-10 pl-9"
-              />
-            </div>
-            <span className="hidden items-center gap-1 rounded-lg border border-slate-200 bg-white/70 px-2 py-1 text-xs text-slate-500 sm:inline-flex dark:border-slate-800 dark:bg-slate-950/70">
-              <ScanLine className="h-3.5 w-3.5" /> Scanner ready
+        {/* Scanner header */}
+        <div className="border-b border-slate-200 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 dark:border-slate-800">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-md">
+              <ScanLine className="h-5 w-5" />
             </span>
+            <div>
+              <div className="text-sm font-bold">Scan or search a product</div>
+              <div className="text-xs text-slate-500">Use a barcode scanner, or type a name / SKU / barcode</div>
+            </div>
+          </div>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+            <Input
+              ref={searchRef}
+              value={q}
+              onChange={(e) => { setQ(e.target.value); setOpen(true); setActiveIdx(0); }}
+              onKeyDown={onSearchKey}
+              onFocus={() => setOpen(true)}
+              onBlur={() => setTimeout(() => setOpen(false), 150)}
+              placeholder="Scan barcode or start typing…"
+              className="h-14 rounded-xl border-2 border-primary/20 pl-12 pr-4 text-base font-medium shadow-sm focus-visible:border-primary focus-visible:ring-primary/20"
+            />
+            {open && q.trim().length > 0 && (
+              <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
+                {isFetching && suggestions.length === 0 ? (
+                  <div className="p-4 text-sm text-slate-500">Searching…</div>
+                ) : suggestions.length === 0 ? (
+                  <div className="p-4 text-sm text-slate-500">No products found for "{q}"</div>
+                ) : (
+                  <ul className="max-h-80 overflow-y-auto">
+                    {suggestions.map((p, i) => {
+                      const out = (p.stock ?? 0) <= 0;
+                      return (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => { addToCart(p); setQ(""); setOpen(false); searchRef.current?.focus(); }}
+                            onMouseEnter={() => setActiveIdx(i)}
+                            disabled={out}
+                            className={`flex w-full items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left transition last:border-0 dark:border-slate-800 ${i === activeIdx ? "bg-primary/5" : "hover:bg-slate-50 dark:hover:bg-slate-800"} disabled:cursor-not-allowed disabled:opacity-50`}
+                          >
+                            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
+                              {p.img ? <img src={p.img} alt="" className="h-full w-full object-cover" /> : (
+                                <div className="grid h-full place-items-center text-slate-300"><Package className="h-5 w-5" /></div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{p.name}</div>
+                              <div className="truncate text-[11px] text-slate-500">
+                                {p.sku ? `SKU ${p.sku}` : ""}{p.sku && p.barcode ? " · " : ""}{p.barcode ? `Barcode ${p.barcode}` : ""}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-bold text-primary">{money(Number(p.price))}</div>
+                              <div className={`text-[10px] font-semibold ${out ? "text-rose-600" : "text-emerald-600"}`}>
+                                {out ? "Out of stock" : `${p.stock} ${p.unit ?? "pcs"}`}
+                              </div>
+                            </div>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+            <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 dark:bg-slate-800"><ScanLine className="h-3 w-3" /> Scanner ready</span>
+            <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 dark:bg-slate-800">↑↓ navigate</span>
+            <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 dark:bg-slate-800">Enter add</span>
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">
-
-
-        {isFetching && (products as Product[]).length === 0 ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-40 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
-            ))}
+        {/* Cart list (moved to left, spacious) */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4 text-primary" />
+              <span className="text-sm font-bold">Cart ({cart.length})</span>
+            </div>
+            {cart.length > 0 && (
+              <button onClick={clearAll} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+                <X className="h-3.5 w-3.5" /> Clear all
+              </button>
+            )}
           </div>
-        ) : (products as Product[]).length === 0 ? (
-          <div className="grid place-items-center py-16 text-sm text-slate-500">No products found.</div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-            {(products as Product[]).map((p) => {
-              const out = (p.stock ?? 0) <= 0;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => addToCart(p)}
-                  disabled={out}
-                  className={`group relative flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm outline-none transition hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-primary/60 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950`}
-                >
-                  <div className="aspect-square w-full bg-slate-50 dark:bg-slate-900">
-                    {p.img ? (
-                      <img src={p.img} alt={p.name} className="h-full w-full object-cover transition group-hover:scale-105" />
-                    ) : (
-                      <div className="grid h-full place-items-center text-slate-300">
-                        <ShoppingCart className="h-8 w-8" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-1 flex-col gap-1 p-2.5">
-                    <div className="line-clamp-2 min-h-[2.5rem] text-xs font-semibold text-slate-800 dark:text-slate-100">
-                      {p.name}
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            {cart.length === 0 ? (
+              <div className="grid h-full place-items-center py-16 text-center text-sm text-slate-500">
+                <div>
+                  <ScanLine className="mx-auto mb-3 h-12 w-12 text-slate-300" />
+                  <div className="font-medium">Ready to scan</div>
+                  <div className="text-xs">Scan a barcode or search above to add items.</div>
+                </div>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {cart.map((it) => (
+                  <li key={it.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
+                      {it.img ? <img src={it.img} alt="" className="h-full w-full object-cover" /> : (
+                        <div className="grid h-full place-items-center text-slate-300"><Package className="h-5 w-5" /></div>
+                      )}
                     </div>
-                    <div className="mt-auto flex items-center justify-between">
-                      <span className="text-sm font-bold text-primary">{money(Number(p.price))}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${out ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"}`}>
-                        {out ? "Out" : `${p.stock} ${p.unit ?? "pcs"}`}
-                      </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold">{it.name}</div>
+                      <div className="text-xs text-slate-500">{money(Number(it.price))} × {it.qty} = <b className="text-slate-800 dark:text-slate-100">{money(Number(it.price) * it.qty)}</b></div>
                     </div>
-                  </div>
-                </button>
-              );
-            })}
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setQty(it.id, it.qty - 1)} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"><Minus className="h-3.5 w-3.5" /></button>
+                      <input
+                        value={it.qty}
+                        onChange={(e) => setQty(it.id, Math.max(0, Number(e.target.value) || 0))}
+                        className="h-8 w-12 rounded-md border border-slate-200 bg-transparent text-center text-sm dark:border-slate-700"
+                      />
+                      <button onClick={() => setQty(it.id, it.qty + 1)} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"><Plus className="h-3.5 w-3.5" /></button>
+                    </div>
+                    <button onClick={() => remove(it.id)} className="ml-1 grid h-8 w-8 place-items-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950"><Trash2 className="h-4 w-4" /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
-        )}
         </div>
       </section>
 
-      {/* RIGHT: Cart */}
+      {/* RIGHT: Checkout */}
       <aside className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-
-        <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+        <header className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 dark:border-slate-800">
           <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
-              <ShoppingCart className="h-4 w-4" />
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+              <Wallet className="h-4 w-4" />
             </span>
             <div>
-              <div className="text-sm font-bold">Current sale</div>
-              <div className="text-[11px] text-slate-500">{cart.length} item(s)</div>
+              <div className="text-sm font-bold">Checkout</div>
+              <div className="text-[11px] text-slate-500">Review & complete sale</div>
             </div>
           </div>
-          {cart.length > 0 && (
-            <button onClick={clearAll} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
-              <X className="h-3.5 w-3.5" /> Clear
-            </button>
-          )}
         </header>
 
-        <div className="max-h-[38vh] min-h-0 flex-1 overflow-y-auto p-3 lg:max-h-none">
-          {cart.length === 0 ? (
-            <div className="grid place-items-center py-14 text-center text-sm text-slate-500">
-              <ShoppingCart className="mb-2 h-8 w-8 text-slate-300" />
-              Click products to add them.
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {cart.map((it) => (
-                <li key={it.id} className="flex items-center gap-2 rounded-xl border border-slate-200 p-2 dark:border-slate-800">
-                  <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-                    {it.img ? <img src={it.img} alt="" className="h-full w-full object-cover" /> : null}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">{it.name}</div>
-                    <div className="text-xs text-slate-500">{money(Number(it.price))} × {it.qty} = <b className="text-slate-800 dark:text-slate-100">{money(Number(it.price) * it.qty)}</b></div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => setQty(it.id, it.qty - 1)} className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"><Minus className="h-3.5 w-3.5" /></button>
-                    <input
-                      value={it.qty}
-                      onChange={(e) => setQty(it.id, Math.max(0, Number(e.target.value) || 0))}
-                      className="h-7 w-10 rounded-md border border-slate-200 bg-transparent text-center text-sm dark:border-slate-700"
-                    />
-                    <button onClick={() => setQty(it.id, it.qty + 1)} className="grid h-7 w-7 place-items-center rounded-md border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"><Plus className="h-3.5 w-3.5" /></button>
-                  </div>
-                  <button onClick={() => remove(it.id)} className="ml-1 grid h-7 w-7 place-items-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950"><Trash2 className="h-3.5 w-3.5" /></button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="border-t border-slate-200 p-4 dark:border-slate-800">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="mb-3 grid grid-cols-2 gap-2">
             <label className="text-xs text-slate-500">Customer
               <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Walk-in" className="mt-1 h-9" />
@@ -282,11 +347,13 @@ function PosPage() {
               {paid >= total ? `Change: ${money(change)}` : `Remaining: ${money(total - paid)}`}
             </div>
           </div>
+        </div>
 
+        <div className="border-t border-slate-200 p-4 dark:border-slate-800">
           <Button
             onClick={() => sale.mutate()}
             disabled={sale.isPending || cart.length === 0 || paid < total}
-            className="mt-3 h-12 w-full text-base font-bold"
+            className="h-12 w-full text-base font-bold"
           >
             <Wallet className="mr-2 h-5 w-5" />
             {sale.isPending ? "Processing…" : `Complete sale · ${money(total)}`}
@@ -311,7 +378,7 @@ function PosPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => window.print()}>Print</Button>
-            <Button onClick={() => setReceipt(null)}>New sale</Button>
+            <Button onClick={() => { setReceipt(null); searchRef.current?.focus(); }}>New sale</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

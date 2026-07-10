@@ -262,9 +262,11 @@ function PosPage() {
       printThermalReceipt({ id: res.id, ...snapshot });
       clearAll();
       clearAutosave();
-      toast.success(`Sale #${res.id.slice(0, 8).toUpperCase()} — ${money(res.total)}`);
+      toast.success(`Payment successful · ${money(res.total)}`, {
+        description: `Invoice #${res.id.slice(0, 8).toUpperCase()} — printing receipt`,
+      });
     },
-    onError: (e: Error) => toast.error(e.message || "Sale failed"),
+    onError: (e: Error) => toast.error("Payment failed", { description: e.message || "Sale could not be completed" }),
   });
 
   function saveDraft() {

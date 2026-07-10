@@ -83,11 +83,21 @@ function PosPage() {
     searchRef.current?.focus();
   }, []);
 
-  // Auto-save cart whenever it changes
+  // Debounced auto-save with versioned snapshot (last writer with newer version wins)
+  const autosaveVersionRef = useRef(0);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!hydratedRef.current) return;
-    if (cart.length === 0) { clearAutosave(); return; }
-    persistAutosave({ cart, customer, discount, tax, method });
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      if (cart.length === 0) { clearAutosave(); return; }
+      const version = ++autosaveVersionRef.current;
+      const existing = loadAutosave();
+      if (existing && (existing.version ?? 0) > version) return; // don't overwrite newer
+      persistAutosave({ cart, customer, discount, tax, method, version, at: Date.now() });
+      toast.message("Draft auto-saved", { duration: 900 });
+    }, 800);
+    return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
   }, [cart, customer, discount, tax, method]);
 
   const subtotal = useMemo(() => cart.reduce((s, it) => s + it.price * it.qty, 0), [cart]);

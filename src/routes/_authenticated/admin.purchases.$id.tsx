@@ -120,6 +120,25 @@ function PurchaseDetail() {
           <p className="mt-1 text-sm">{header.note}</p>
         </div>
       )}
+
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Pay due — ${due.toFixed(2)}</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <div>
+              <Label>Amount</Label>
+              <Input type="number" min={0} max={due} step="0.01" value={payAmount}
+                onChange={(e) => setPayAmount(Number(e.target.value) || 0)} autoFocus />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
+            <Button onClick={() => pay.mutate()} disabled={pay.isPending || payAmount <= 0 || payAmount > due}>
+              {pay.isPending ? "Saving…" : "Record payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

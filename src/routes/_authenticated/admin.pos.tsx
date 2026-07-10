@@ -307,20 +307,53 @@ function PosPage() {
 
 
   const posRootRef = useRef<HTMLDivElement | null>(null);
+  const fsBusyRef = useRef(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   useEffect(() => {
-    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    const onChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+      fsBusyRef.current = false;
+    };
+    const onError = () => {
+      fsBusyRef.current = false;
+      toast.error("Fullscreen failed. Your browser may block it here.");
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && document.fullscreenElement) {
+        document.exitFullscreen?.().catch(() => {});
+      }
+    };
     document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
+    document.addEventListener("fullscreenerror", onError);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("fullscreenerror", onError);
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
   const toggleFullscreen = async () => {
+    if (fsBusyRef.current) return;
+    const el = posRootRef.current;
+    if (!el) return;
+    if (typeof el.requestFullscreen !== "function" || typeof document.exitFullscreen !== "function") {
+      toast.message("Fullscreen isn’t supported in this browser.");
+      return;
+    }
+    fsBusyRef.current = true;
     try {
       if (!document.fullscreenElement) {
-        await posRootRef.current?.requestFullscreen?.();
+        await el.requestFullscreen();
+        toast.success("Entered fullscreen. Press Esc to exit.");
       } else {
-        await document.exitFullscreen?.();
+        await document.exitFullscreen();
+        toast.message("Exited fullscreen.");
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      toast.error("Couldn’t toggle fullscreen.");
+      fsBusyRef.current = false;
+    }
   };
 
   return (
@@ -337,14 +370,27 @@ function PosPage() {
               <div className="text-sm font-bold">Scan or search a product</div>
               <div className="text-xs text-slate-500">Use a barcode scanner, or type a name / SKU / barcode</div>
             </div>
+            {isFullscreen && (
+              <span
+                role="status"
+                aria-live="polite"
+                className="hidden items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 sm:inline-flex"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Fullscreen
+              </span>
+            )}
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={toggleFullscreen}
+              aria-label={isFullscreen ? "Exit fullscreen (Escape)" : "Enter fullscreen"}
+              aria-pressed={isFullscreen}
               title={isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen"}
+              className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              {isFullscreen ? <Minimize2 className="h-4 w-4" aria-hidden="true" /> : <Maximize2 className="h-4 w-4" aria-hidden="true" />}
               <span className="ml-1 hidden sm:inline">{isFullscreen ? "Exit" : "Fullscreen"}</span>
             </Button>
           </div>

@@ -406,20 +406,8 @@ function PosPage() {
               <ul className="space-y-2">
                 {cart.map((it) => (
                   <li key={it.id} onClick={() => setSelectedCartId(it.id)} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 shadow-sm transition-all ${justAddedId === it.id ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300 dark:border-emerald-500 dark:bg-emerald-950/40" : selectedCartId === it.id ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "border-slate-200 bg-white hover:border-primary/40 dark:border-slate-800 dark:bg-slate-950"}`}>
-                    {justAddedId === it.id && (
-                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                    )}
-
-
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-semibold">{it.name}</div>
-                      <div className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap text-[11px] leading-tight text-slate-500">
-                        <span className="truncate">Barcode: {it.barcode?.trim() ? it.barcode : "—"}</span>
-                        <span className="text-slate-300">·</span>
-                        <span className={`shrink-0 font-semibold ${it.stock == null ? "text-slate-500" : (it.stock ?? 0) <= 0 ? "text-rose-600" : "text-emerald-600"}`}>
-                          {it.stock == null ? "Stock: N/A" : (it.stock ?? 0) <= 0 ? "Out of stock" : `Stock: ${it.stock} ${it.unit ?? "pcs"}`}
-                        </span>
-                      </div>
                       <div className="text-xs text-slate-500">{money(Number(it.price))} × {it.qty} = <b className="text-slate-800 dark:text-slate-100">{money(Number(it.price) * it.qty)}</b></div>
                     </div>
                     <div className="flex items-center gap-1">

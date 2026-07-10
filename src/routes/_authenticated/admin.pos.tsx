@@ -55,6 +55,9 @@ function PosPage() {
     queryFn: () => historyFn({}) as Promise<{ rows: { id: string; total: number; created_at: string; payment_method: string; customer: string | null; items: { name: string; qty: number; price: number }[]; quantity: number }[]; total: number; count: number }>,
     enabled: historyOpen,
   });
+  useEffect(() => {
+    if (historyQ.isError) toast.error("Couldn’t load today’s sales. Please try again.");
+  }, [historyQ.isError]);
   const filteredHistoryRows = useMemo(() => {
     const rows = historyQ.data?.rows ?? [];
     const q = historySearch.trim().toLowerCase();

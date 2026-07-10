@@ -67,6 +67,7 @@ function PosPage() {
   const bufferRef = useRef<string>("");
   const justAddedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydratedRef = useRef(false);
+  const saveDraftRef = useRef<() => void>(() => {});
 
   // Restore auto-saved cart once on mount
   useEffect(() => {
@@ -77,17 +78,27 @@ function PosPage() {
       setDiscount(Number(auto.discount) || 0);
       setTax(Number(auto.tax) || 0);
       setMethod(auto.method ?? "cash");
-      toast.message("Restored unsaved cart");
+      toast.message("Draft auto-restored", { description: "Continuing your unsaved cart" });
     }
     hydratedRef.current = true;
     searchRef.current?.focus();
   }, []);
 
-  // Auto-save cart whenever it changes
+  // Debounced auto-save with versioned snapshot (last writer with newer version wins)
+  const autosaveVersionRef = useRef(0);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!hydratedRef.current) return;
-    if (cart.length === 0) { clearAutosave(); return; }
-    persistAutosave({ cart, customer, discount, tax, method });
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => {
+      if (cart.length === 0) { clearAutosave(); return; }
+      const version = ++autosaveVersionRef.current;
+      const existing = loadAutosave();
+      if (existing && (existing.version ?? 0) > version) return; // don't overwrite newer
+      persistAutosave({ cart, customer, discount, tax, method, version, at: Date.now() });
+      toast.message("Draft auto-saved", { duration: 900 });
+    }, 800);
+    return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
   }, [cart, customer, discount, tax, method]);
 
   const subtotal = useMemo(() => cart.reduce((s, it) => s + it.price * it.qty, 0), [cart]);
@@ -151,6 +162,12 @@ function PosPage() {
         e.preventDefault();
         searchRef.current?.focus();
         searchRef.current?.select();
+        return;
+      }
+      // Global shortcut: Ctrl/Cmd+D save current cart as draft
+      if ((e.ctrlKey || e.metaKey) && (e.key === "d" || e.key === "D")) {
+        e.preventDefault();
+        saveDraftRef.current?.();
         return;
       }
 
@@ -245,19 +262,24 @@ function PosPage() {
       printThermalReceipt({ id: res.id, ...snapshot });
       clearAll();
       clearAutosave();
-      toast.success(`Sale #${res.id.slice(0, 8).toUpperCase()} — ${money(res.total)}`);
+      toast.success(`Payment successful · ${money(res.total)}`, {
+        description: `Invoice #${res.id.slice(0, 8).toUpperCase()} — printing receipt`,
+      });
     },
-    onError: (e: Error) => toast.error(e.message || "Sale failed"),
+    onError: (e: Error) => toast.error("Payment failed", { description: e.message || "Sale could not be completed" }),
   });
 
   function saveDraft() {
-    if (cart.length === 0) { toast.error("Cart is empty"); return; }
-    const defaultName = `${customer || "Walk-in"} · ${cart.length} items · ${money(subtotal)}`;
-    const name = window.prompt("Name this draft", defaultName)?.trim() || defaultName;
+    if (cart.length === 0) { toast.error("Cart is empty — nothing to draft"); return; }
+    const first = cart[0];
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const extra = cart.length > 1 ? ` +${cart.length - 1}` : "";
+    const name = `${first.name}${extra} · ${money(Number(first.price))} · ${time}`;
     const d: Draft = { id: crypto.randomUUID(), at: Date.now(), name, cart, customer, discount, tax, method };
     const next = [d, ...drafts].slice(0, 20);
     setDrafts(next); persistDrafts(next);
     clearAll();
+    clearAutosave();
     toast.success(`Draft saved: ${name}`);
   }
   function loadDraft(id: string) {
@@ -268,12 +290,16 @@ function PosPage() {
     const next = drafts.filter((x) => x.id !== id);
     setDrafts(next); persistDrafts(next);
     setDraftsOpen(false);
-    toast.success("Draft loaded");
+    toast.success(`Loaded draft: ${d.name ?? d.customer}`);
   }
   function removeDraft(id: string) {
+    const d = drafts.find((x) => x.id === id);
     const next = drafts.filter((x) => x.id !== id);
     setDrafts(next); persistDrafts(next);
+    toast.success(`Deleted draft${d?.name ? `: ${d.name}` : ""}`);
   }
+  saveDraftRef.current = saveDraft;
+
 
 
   return (
@@ -672,7 +698,7 @@ function loadDrafts(): Draft[] {
 function persistDrafts(d: Draft[]) {
   try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(d)); } catch { /* ignore */ }
 }
-type AutosaveShape = Omit<Draft, "id" | "at" | "name">;
+type AutosaveShape = Omit<Draft, "id" | "at" | "name"> & { version?: number; at?: number };
 function loadAutosave(): AutosaveShape | null {
   if (typeof window === "undefined") return null;
   try { const raw = localStorage.getItem(AUTOSAVE_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
@@ -786,6 +812,17 @@ function CalculatorDialog({ open, onOpenChange, selectedItem, onApplyQty, onAppl
               ? <>Apply <b className="tabular-nums">{result}</b> to <b className="truncate">{selectedItem.name}</b></>
               : <>Select a cart item to apply as quantity, or apply as discount.</>}
           </div>
+          {canApply && selectedItem && (
+            <div className="mb-2 rounded-md bg-primary/5 p-2 text-[11px] text-slate-600 dark:text-slate-300">
+              <div className="flex justify-between"><span>Current</span><span className="tabular-nums">{selectedItem.qty} × {money(Number(selectedItem.price))} = <b>{money(selectedItem.qty * Number(selectedItem.price))}</b></span></div>
+              <div className="flex justify-between text-primary"><span>After apply qty</span><span className="tabular-nums">{Math.max(1, Math.floor(resultNum))} × {money(Number(selectedItem.price))} = <b>{money(Math.max(1, Math.floor(resultNum)) * Number(selectedItem.price))}</b></span></div>
+            </div>
+          )}
+          {canApply && (
+            <div className="mb-2 rounded-md bg-slate-100 p-2 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              <div className="flex justify-between"><span>If set as discount</span><span className="tabular-nums">− {money(Math.max(0, resultNum))}</span></div>
+            </div>
+          )}
           <div className="flex gap-2">
             <Button
               size="sm" variant="outline" className="flex-1"

@@ -244,15 +244,19 @@ function PosPage() {
 
   function saveDraft() {
     if (cart.length === 0) { toast.error("Cart is empty"); return; }
-    const d: Draft = { id: crypto.randomUUID(), at: Date.now(), cart, customer, discount, tax, method };
+    const defaultName = `${customer || "Walk-in"} · ${cart.length} items · ${money(subtotal)}`;
+    const name = window.prompt("Name this draft", defaultName)?.trim() || defaultName;
+    const d: Draft = { id: crypto.randomUUID(), at: Date.now(), name, cart, customer, discount, tax, method };
     const next = [d, ...drafts].slice(0, 20);
     setDrafts(next); persistDrafts(next);
     clearAll();
-    toast.success("Saved as draft");
+    toast.success(`Draft saved: ${name}`);
   }
   function loadDraft(id: string) {
     const d = drafts.find((x) => x.id === id); if (!d) return;
-    setCart(d.cart); setCustomer(d.customer); setDiscount(d.discount); setTax(d.tax); setMethod(d.method);
+    setCart(d.cart.map((c) => ({ ...c, price: Number(c.price), qty: Number(c.qty) })));
+    setCustomer(d.customer); setDiscount(Number(d.discount) || 0); setTax(Number(d.tax) || 0); setMethod(d.method);
+    setPaid(0);
     const next = drafts.filter((x) => x.id !== id);
     setDrafts(next); persistDrafts(next);
     setDraftsOpen(false);

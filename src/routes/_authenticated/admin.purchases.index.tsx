@@ -3,8 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listPurchases, deletePurchase } from "@/lib/purchases.functions";
 import { Button } from "@/components/ui/button";
-import { Trash2, Plus, Eye } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Trash2, Plus, Eye, Search, X, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
+import { useMemo, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/admin/purchases/")({
   head: () => ({ meta: [{ title: "Purchases — Admin" }] }),

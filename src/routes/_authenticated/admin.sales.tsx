@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Eye, Trash2, Search, Receipt, Printer, Calendar, X, TrendingUp, ShoppingBag,
-  Download, ChevronLeft, ChevronRight, ArrowRight,
+  Download, ChevronLeft, ChevronRight, ArrowRight, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { printThermalReceipt } from "@/lib/thermal-print";
@@ -47,6 +47,7 @@ function SalesPage() {
 
   const [confirmSale, setConfirmSale] = useState<{ id: string; invoice: string } | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const setSearch = (patch: Partial<{ q: string; from: string; to: string; page: number }>) => {
     const next = { q, from, to, page, ...patch };
@@ -94,31 +95,60 @@ function SalesPage() {
     onError: (e: Error) => toast.error(e.message || "Failed to delete sale"),
   });
 
-  const exportCsv = () => {
+  const exportCsv = async () => {
     if (filtered.length === 0) { toast.error("Nothing to export"); return; }
-    const headers = ["Invoice", "Date", "Customer", "Payment", "Items", "Qty", "Subtotal", "Discount", "Tax", "Total"];
-    const esc = (v: unknown) => {
-      const s = String(v ?? "");
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const lines = [headers.join(",")];
-    for (const r of filtered) {
+    setIsExporting(true);
+    try {
+      // yield to UI so spinner paints
+      await new Promise((r) => setTimeout(r, 0));
+      const headers = [
+        "Invoice", "Date", "Time", "Customer", "Payment",
+        "Item Count", "Total Qty", "Subtotal", "Discount", "Tax", "Total",
+      ];
+      const esc = (v: unknown) => {
+        const s = String(v ?? "");
+        return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const num = (n: number) => (Number(n) || 0).toFixed(2);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const fmtDate = (iso: string) => {
+        const d = new Date(iso);
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      };
+      const fmtTime = (iso: string) => {
+        const d = new Date(iso);
+        return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      };
+      const lines = [headers.map(esc).join(",")];
+      for (const r of filtered) {
+        lines.push([
+          r.invoice, fmtDate(r.created_at), fmtTime(r.created_at),
+          r.customer ?? "Walk-in", r.payment_method,
+          r.items_count, r.quantity,
+          num(r.subtotal), num(r.discount), num(r.tax), num(r.total),
+        ].map(esc).join(","));
+      }
+      lines.push("");
       lines.push([
-        r.invoice, new Date(r.created_at).toISOString(), r.customer ?? "Walk-in",
-        r.payment_method, r.items_count, r.quantity,
-        r.subtotal.toFixed(2), r.discount.toFixed(2), r.tax.toFixed(2), r.total.toFixed(2),
+        "TOTAL", "", "", "", "", filtered.length, totalQty,
+        num(filtered.reduce((s, r) => s + r.subtotal, 0)),
+        num(filtered.reduce((s, r) => s + r.discount, 0)),
+        num(filtered.reduce((s, r) => s + r.tax, 0)),
+        num(totalAmount),
       ].map(esc).join(","));
+      const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `sales-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      toast.success(`Exported ${filtered.length} sale${filtered.length === 1 ? "" : "s"}`);
+    } catch (e) {
+      toast.error((e as Error).message || "Export failed");
+    } finally {
+      setIsExporting(false);
     }
-    lines.push("");
-    lines.push(["", "", "", "", "", "TOTAL", "", "", "", totalAmount.toFixed(2)].map(esc).join(","));
-    const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sales-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-    toast.success(`Exported ${filtered.length} sale${filtered.length === 1 ? "" : "s"}`);
   };
 
   return (
@@ -171,8 +201,9 @@ function SalesPage() {
           >
             <X className="mr-1 h-4 w-4" />Clear
           </Button>
-          <Button variant="outline" className="h-11 rounded-xl" onClick={exportCsv} aria-label="Export CSV">
-            <Download className="mr-1 h-4 w-4" />Export
+          <Button variant="outline" className="h-11 rounded-xl" onClick={exportCsv} disabled={isExporting || filtered.length === 0} aria-label="Export all filtered sales to CSV">
+            {isExporting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Download className="mr-1 h-4 w-4" />}
+            {isExporting ? "Exporting…" : `Export (${filtered.length})`}
           </Button>
         </div>
       </div>
@@ -321,7 +352,7 @@ function SalesPage() {
               onClick={(e) => { e.preventDefault(); if (confirmSale) del.mutate(confirmSale.id); }}
               className="bg-rose-600 text-white hover:bg-rose-700"
             >
-              {del.isPending ? "Deleting…" : "Delete"}
+              {del.isPending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Deleting…</> : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -341,7 +372,7 @@ function SalesPage() {
 function SaleDetailsDialog({
   id, onClose, onOpenFull, getFn,
 }: { id: string | null; onClose: () => void; onOpenFull: (id: string) => void; getFn: (args: { data: { id: string } }) => Promise<Awaited<ReturnType<typeof getPosSale>>> }) {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-sale", id],
     queryFn: () => getFn({ data: { id: id! } }),
     enabled: !!id,
@@ -356,24 +387,31 @@ function SaleDetailsDialog({
 
   return (
     <Dialog open={!!id} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl overflow-hidden p-0">
+      <DialogContent className="max-w-2xl overflow-hidden p-0" aria-busy={isLoading}>
         <DialogHeader className="border-b bg-gradient-to-br from-primary/10 via-primary/5 to-transparent px-6 py-5">
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <Receipt className="h-5 w-5 text-primary" />Sale details
+            <Receipt className="h-5 w-5 text-primary" aria-hidden />Sale details
           </DialogTitle>
           <DialogDescription>
-            {data ? <>Invoice <span className="font-mono font-semibold text-foreground">{data.invoice}</span> · {fmtDT(data.created_at)}</> : "Loading…"}
+            {isLoading ? "Loading sale…" : data ? <>Invoice <span className="font-mono font-semibold text-foreground">{data.invoice}</span> · {fmtDT(data.created_at)}</> : "No sale selected"}
           </DialogDescription>
         </DialogHeader>
 
         <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
           {isLoading ? (
-            <div className="space-y-3">
-              <div className="h-16 animate-pulse rounded-lg bg-muted" />
-              <div className="h-40 animate-pulse rounded-lg bg-muted" />
+            <div className="flex flex-col items-center justify-center gap-3 py-14 text-center" role="status" aria-live="polite">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Fetching sale details…</p>
             </div>
-          ) : isError || !data ? (
-            <p className="py-10 text-center text-sm text-destructive">Failed to load sale.</p>
+          ) : isError ? (
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <p className="text-sm text-destructive">Failed to load sale.</p>
+              <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
+            </div>
+          ) : !data ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">No details available.</p>
+          ) : data.items.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">This sale has no items.</p>
           ) : (
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

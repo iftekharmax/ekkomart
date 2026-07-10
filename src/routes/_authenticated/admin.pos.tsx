@@ -298,6 +298,8 @@ function PosPage() {
     setDrafts(next); persistDrafts(next);
     toast.success(`Deleted draft${d?.name ? `: ${d.name}` : ""}`);
   }
+  saveDraftRef.current = saveDraft;
+
 
 
   return (

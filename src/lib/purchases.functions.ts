@@ -137,8 +137,10 @@ export const payPurchaseDue = createServerFn({ method: "POST" })
       .select("total,paid").eq("id", data.id).single();
     if (error) throw new Error(error.message);
     const { data: rets } = await (context.supabase.from("purchase_returns" as any) as any)
-      .select("total").eq("purchase_id", data.id);
-    const returnedTotal = (rets ?? []).reduce((s: number, r: any) => s + Number(r.total ?? 0), 0);
+      .select("total,status").eq("purchase_id", data.id);
+    const returnedTotal = (rets ?? [])
+      .filter((r: any) => r.status !== "voided")
+      .reduce((s: number, r: any) => s + Number(r.total ?? 0), 0);
     const total = Number(row.total);
     const paid = Number(row.paid ?? 0);
     const due = Math.max(0, total - returnedTotal - paid);

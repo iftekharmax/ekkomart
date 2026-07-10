@@ -66,9 +66,12 @@ function PurchaseDetail() {
     </div>
   );
   const { header, items, payments, returns } = data as any;
-  const returnedTotal = (returns ?? []).reduce((s: number, r: any) => s + Number(r.total ?? 0), 0);
-  const due = Math.max(0, Number(header.total) - returnedTotal - Number(header.paid));
-  const status = due <= 0 ? "Paid" : Number(header.paid) > 0 ? "Partial" : "Unpaid";
+  const activeReturns = (returns ?? []).filter((r: any) => r.status !== "voided");
+  const returnedTotal = activeReturns.reduce((s: number, r: any) => s + Number(r.total ?? 0), 0);
+  const paidTotal = Number(header.paid ?? 0);
+  const total = Number(header.total);
+  const due = Math.max(0, total - returnedTotal - paidTotal);
+  const status = due <= 0 ? "Paid" : paidTotal > 0 ? "Partial" : "Unpaid";
 
 
   return (
@@ -213,34 +216,85 @@ function PurchaseDetail() {
             <span>Total</span><span>${Number(header.total).toFixed(2)}</span>
           </div>
           {returnedTotal > 0 && (
-            <Row label={`Returned (${(returns ?? []).length})`} value={`-$${returnedTotal.toFixed(2)}`} />
+            <Row label={`Returned (${activeReturns.length})`} value={`-$${returnedTotal.toFixed(2)}`} />
           )}
-          <Row label="Paid" value={`$${Number(header.paid).toFixed(2)}`} />
+          <Row label="Paid" value={`$${paidTotal.toFixed(2)}`} />
           <div className={`flex justify-between text-sm font-semibold ${due > 0 ? "text-destructive" : "text-green-600"}`}>
             <span>Payable to supplier</span><span>${due.toFixed(2)}</span>
           </div>
         </div>
       </div>
 
-      {(returns ?? []).length > 0 && (
-        <div className="mt-6 overflow-hidden rounded-xl border bg-card">
-          <div className="border-b bg-muted/40 px-4 py-3 text-sm font-semibold">
-            Returns ({(returns as any[]).length}) — deducted from supplier payable
+      {/* Breakdown: how returned/paid/remaining are derived */}
+      <div className="mt-6 overflow-hidden rounded-xl border bg-card">
+        <div className="border-b bg-muted/40 px-4 py-3 text-sm font-semibold">
+          Balance breakdown
+        </div>
+        <div className="grid gap-4 p-4 md:grid-cols-3">
+          <div>
+            <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
+              <span>Returns ({(returns ?? []).length})</span>
+              <span>-${returnedTotal.toFixed(2)}</span>
+            </div>
+            {(returns ?? []).length === 0 ? (
+              <p className="text-xs text-muted-foreground">No returns.</p>
+            ) : (
+              <ul className="space-y-1">
+                {(returns as any[]).map((r) => {
+                  const voided = r.status === "voided";
+                  return (
+                    <li key={r.id}>
+                      <Link to="/admin/purchase-returns/$id" params={{ id: r.id }}
+                        className={`flex items-center justify-between gap-2 rounded px-2 py-1 text-xs hover:bg-muted/40 ${voided ? "opacity-60 line-through" : ""}`}>
+                        <span className="min-w-0 truncate">
+                          <span className="font-mono">{r.reference}</span>
+                          <span className="text-muted-foreground"> · {r.return_date}</span>
+                        </span>
+                        <span className={`shrink-0 font-semibold ${voided ? "text-muted-foreground" : "text-destructive"}`}>
+                          {voided ? "voided" : `-$${Number(r.total).toFixed(2)}`}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
-          <div className="divide-y">
-            {(returns as any[]).map((r) => (
-              <Link key={r.id} to="/admin/purchase-returns/$id" params={{ id: r.id }}
-                className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-muted/30">
-                <div className="min-w-0">
-                  <div className="font-mono text-xs text-muted-foreground">{r.reference}</div>
-                  <div className="truncate">{r.return_date}{r.reason ? ` · ${r.reason}` : ""}</div>
-                </div>
-                <div className="shrink-0 font-semibold text-destructive">-${Number(r.total).toFixed(2)}</div>
-              </Link>
-            ))}
+          <div>
+            <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
+              <span>Payments ({(payments ?? []).length})</span>
+              <span>${paidTotal.toFixed(2)}</span>
+            </div>
+            {(payments ?? []).length === 0 ? (
+              <p className="text-xs text-muted-foreground">No payments.</p>
+            ) : (
+              <ul className="space-y-1">
+                {(payments as any[]).map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-2 px-2 py-1 text-xs">
+                    <span className="min-w-0 truncate text-muted-foreground">
+                      {new Date(p.paid_at).toLocaleDateString()}{p.receipt_no ? ` · #${p.receipt_no}` : ""}
+                    </span>
+                    <span className="shrink-0 font-semibold">${Number(p.amount).toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="rounded-lg bg-muted/40 p-3 text-xs">
+            <div className="mb-2 font-semibold uppercase tracking-wide text-muted-foreground">Remaining</div>
+            <div className="space-y-1 font-mono">
+              <div className="flex justify-between"><span>Total</span><span>${total.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span>− Returned</span><span>${returnedTotal.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span>− Paid</span><span>${paidTotal.toFixed(2)}</span></div>
+              <div className={`flex justify-between border-t pt-1 font-bold ${due > 0 ? "text-destructive" : "text-green-600"}`}>
+                <span>= Due</span><span>${due.toFixed(2)}</span>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+      </div>
+
+
 
 
       {header.note && (
@@ -254,10 +308,21 @@ function PurchaseDetail() {
         <DialogContent>
           <DialogHeader><DialogTitle>Pay due — ${due.toFixed(2)}</DialogTitle></DialogHeader>
           <div className="grid gap-3">
+            <div className="rounded-lg bg-muted/40 p-3 text-xs">
+              <div className="flex justify-between"><span className="text-muted-foreground">Total</span><span className="font-mono">${total.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">− Returned</span><span className="font-mono">${returnedTotal.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">− Already paid</span><span className="font-mono">${paidTotal.toFixed(2)}</span></div>
+              <div className="mt-1 flex justify-between border-t pt-1 font-semibold"><span>Remaining due</span><span className="font-mono">${due.toFixed(2)}</span></div>
+            </div>
             <div>
               <Label>Amount</Label>
               <Input type="number" min={0} max={due} step="0.01" value={payAmount}
-                onChange={(e) => setPayAmount(Number(e.target.value) || 0)} autoFocus />
+                onChange={(e) => setPayAmount(Math.min(due, Math.max(0, Number(e.target.value) || 0)))} autoFocus />
+              <p className={`mt-1 text-xs ${payAmount > due ? "text-destructive" : "text-muted-foreground"}`}>
+                {payAmount > due
+                  ? `Exceeds remaining by $${(payAmount - due).toFixed(2)}`
+                  : `Remaining after this payment: $${Math.max(0, due - payAmount).toFixed(2)}`}
+              </p>
             </div>
             <div>
               <Label>Receipt # (optional)</Label>

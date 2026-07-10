@@ -36,10 +36,19 @@ function NewReturnPage() {
   const { data: purchases = [] } = useQuery({ queryKey: ["admin-purchases"], queryFn: () => listFn() });
 
   const [purchaseId, setPurchaseId] = useState<string>("");
+  const [purchaseSearch, setPurchaseSearch] = useState("");
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [reference, setReference] = useState("");
   const [reason, setReason] = useState("");
   const [items, setItems] = useState<Line[]>([]);
+
+  const filteredPurchases = useMemo(() => {
+    const q = purchaseSearch.trim().toLowerCase();
+    if (!q) return purchases as any[];
+    return (purchases as any[]).filter((p) =>
+      [p.reference, p.supplier?.name, p.purchase_date].filter(Boolean).join(" ").toLowerCase().includes(q)
+    );
+  }, [purchases, purchaseSearch]);
 
   const { data: purchaseDetail } = useQuery({
     queryKey: ["admin-purchase-detail", purchaseId],
@@ -105,16 +114,23 @@ function NewReturnPage() {
       <div className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="sm:col-span-2">
           <Label>Purchase invoice</Label>
+          <Input value={purchaseSearch} onChange={(e) => setPurchaseSearch(e.target.value)}
+            placeholder="Search by reference, supplier, or date" className="mb-2" />
           <Select value={purchaseId} onValueChange={setPurchaseId}>
-            <SelectTrigger><SelectValue placeholder="Select purchase" /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder={filteredPurchases.length ? "Select purchase" : "No purchases match search"} /></SelectTrigger>
             <SelectContent>
-              {(purchases as any[]).map((p) => (
+              {filteredPurchases.map((p: any) => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.reference} — {p.supplier?.name ?? "—"} ({p.purchase_date})
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {purchaseDetail?.header?.supplier?.name && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Supplier auto-filled: <span className="font-medium">{purchaseDetail.header.supplier.name}</span>
+            </p>
+          )}
         </div>
         <div>
           <Label>Return date</Label>

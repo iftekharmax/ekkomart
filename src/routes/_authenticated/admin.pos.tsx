@@ -812,6 +812,17 @@ function CalculatorDialog({ open, onOpenChange, selectedItem, onApplyQty, onAppl
               ? <>Apply <b className="tabular-nums">{result}</b> to <b className="truncate">{selectedItem.name}</b></>
               : <>Select a cart item to apply as quantity, or apply as discount.</>}
           </div>
+          {canApply && selectedItem && (
+            <div className="mb-2 rounded-md bg-primary/5 p-2 text-[11px] text-slate-600 dark:text-slate-300">
+              <div className="flex justify-between"><span>Current</span><span className="tabular-nums">{selectedItem.qty} × {money(Number(selectedItem.price))} = <b>{money(selectedItem.qty * Number(selectedItem.price))}</b></span></div>
+              <div className="flex justify-between text-primary"><span>After apply qty</span><span className="tabular-nums">{Math.max(1, Math.floor(resultNum))} × {money(Number(selectedItem.price))} = <b>{money(Math.max(1, Math.floor(resultNum)) * Number(selectedItem.price))}</b></span></div>
+            </div>
+          )}
+          {canApply && (
+            <div className="mb-2 rounded-md bg-slate-100 p-2 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              <div className="flex justify-between"><span>If set as discount</span><span className="tabular-nums">− {money(Math.max(0, resultNum))}</span></div>
+            </div>
+          )}
           <div className="flex gap-2">
             <Button
               size="sm" variant="outline" className="flex-1"

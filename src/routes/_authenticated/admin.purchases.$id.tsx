@@ -146,6 +146,7 @@ function PurchaseDetail() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

@@ -738,6 +738,9 @@ function CalculatorDialog({ open, onOpenChange, selectedItem, onApplyQty, onAppl
     { k: "=", on: evaluate, cls: "bg-primary text-primary-foreground hover:bg-primary/90" },
   ];
 
+  const resultNum = Number(result);
+  const canApply = Number.isFinite(resultNum) && result !== "Error";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xs">
@@ -756,6 +759,25 @@ function CalculatorDialog({ open, onOpenChange, selectedItem, onApplyQty, onAppl
               {b.label ?? b.k}
             </button>
           ))}
+        </div>
+        <div className="mt-1 rounded-lg border border-dashed border-slate-200 p-2 dark:border-slate-700">
+          <div className="mb-2 text-[11px] text-slate-500">
+            {selectedItem
+              ? <>Apply <b className="tabular-nums">{result}</b> to <b className="truncate">{selectedItem.name}</b></>
+              : <>Select a cart item to apply as quantity, or apply as discount.</>}
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm" variant="outline" className="flex-1"
+              disabled={!canApply || !selectedItem}
+              onClick={() => { onApplyQty(resultNum); onOpenChange(false); }}
+            >Set Qty</Button>
+            <Button
+              size="sm" className="flex-1"
+              disabled={!canApply}
+              onClick={() => { onApplyDiscount(resultNum); onOpenChange(false); }}
+            >Set Discount</Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

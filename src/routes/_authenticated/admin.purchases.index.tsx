@@ -20,6 +20,31 @@ function PurchasesPage() {
   const delFn = useServerFn(deletePurchase);
   const { data: rows = [], isLoading } = useQuery({ queryKey: ["admin-purchases"], queryFn: () => listFn() });
 
+  const [q, setQ] = useState("");
+  const [supplier, setSupplier] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const suppliers = useMemo(() => {
+    const s = new Set<string>();
+    (rows as any[]).forEach((p) => { if (p.supplier?.name) s.add(p.supplier.name); });
+    return Array.from(s).sort();
+  }, [rows]);
+
+  const filtered = useMemo(() => {
+    const qq = q.trim().toLowerCase();
+    return (rows as any[]).filter((p) => {
+      if (qq && !String(p.reference ?? "").toLowerCase().includes(qq)) return false;
+      if (supplier && (p.supplier?.name ?? "") !== supplier) return false;
+      if (dateFrom && String(p.purchase_date) < dateFrom) return false;
+      if (dateTo && String(p.purchase_date) > dateTo) return false;
+      return true;
+    });
+  }, [rows, q, supplier, dateFrom, dateTo]);
+
+  const hasFilters = Boolean(q || supplier || dateFrom || dateTo);
+  const clearFilters = () => { setQ(""); setSupplier(""); setDateFrom(""); setDateTo(""); };
+
   const del = useMutation({
     mutationFn: (id: string) => delFn({ data: { id } }),
     onSuccess: () => {

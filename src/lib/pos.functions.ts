@@ -65,9 +65,10 @@ export const posSearchProducts = createServerFn({ method: "GET" })
             product_id: p.id,
             variation_id: v.id,
             name: `${p.name} - ${v.name}`,
-            sku: v.sku ?? p.sku ?? null,
+            sku: v.sku ?? null,
             barcode: v.barcode ?? null,
             price: Number(v.price ?? p.price) || 0,
+
             stock: v.stock,
             img: v.image_url ?? p.img ?? null,
             unit: p.unit ?? null,

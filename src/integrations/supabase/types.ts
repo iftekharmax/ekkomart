@@ -152,6 +152,7 @@ export type Database = {
           price: number
           product_id: string | null
           qty: number
+          variation_id: string | null
         }
         Insert: {
           id?: string
@@ -161,6 +162,7 @@ export type Database = {
           price: number
           product_id?: string | null
           qty?: number
+          variation_id?: string | null
         }
         Update: {
           id?: string
@@ -170,6 +172,7 @@ export type Database = {
           price?: number
           product_id?: string | null
           qty?: number
+          variation_id?: string | null
         }
         Relationships: [
           {
@@ -184,6 +187,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "product_variations"
             referencedColumns: ["id"]
           },
         ]

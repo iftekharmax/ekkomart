@@ -26,15 +26,65 @@ export const posSearchProducts = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const sb = publicClient();
     const q = (data.q ?? "").trim();
-    let query = sb.from("products").select("id,name,sku,barcode,price,stock,img,unit").order("name").limit(data.limit);
+    const esc = q.replace(/[,()"']/g, " ");
+
+    const productIds = new Set<string>();
     if (q) {
-      // barcode / sku exact-ish first, then name ilike
-      query = query.or(`name.ilike.%${q}%,sku.ilike.%${q}%,barcode.ilike.%${q}%`);
+      const { data: pRows } = await sb.from("products").select("id")
+        .or(`name.ilike.%${esc}%,sku.ilike.%${esc}%,barcode.ilike.%${esc}%`).limit(data.limit);
+      for (const r of (pRows ?? []) as any[]) productIds.add(r.id);
+      const { data: vRows } = await (sb.from("product_variations" as any) as any).select("product_id")
+        .or(`name.ilike.%${esc}%,sku.ilike.%${esc}%,barcode.ilike.%${esc}%`).limit(data.limit);
+      for (const r of (vRows ?? []) as any[]) if (r.product_id) productIds.add(r.product_id);
+      if (productIds.size === 0) return [];
     }
+
+    let query = sb.from("products")
+      .select("id,name,sku,barcode,price,stock,img,unit,product_type, product_variations(id,name,sku,barcode,price,stock,image_url,is_active,position)")
+      .order("name").limit(data.limit);
+    if (q) query = query.in("id", Array.from(productIds));
     const { data: rows, error } = await query;
     if (error) throw new Error(error.message);
-    return rows ?? [];
+
+    const ql = q.toLowerCase();
+    const out: any[] = [];
+    for (const p of (rows ?? []) as any[]) {
+      const vars = ((p.product_variations ?? []) as any[])
+        .filter((v) => v.is_active !== false)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      const isVariable = p.product_type === "variable" || vars.length > 0;
+      if (isVariable) {
+        // If query matched only the parent (not the variation name/sku/barcode),
+        // still show all variations for that parent.
+        const matchesVar = (v: any) => !ql || [v.name, v.sku, v.barcode].some((f) => String(f ?? "").toLowerCase().includes(ql));
+        const parentMatches = !ql || [p.name, p.sku, p.barcode].some((f) => String(f ?? "").toLowerCase().includes(ql));
+        const list = parentMatches ? vars : vars.filter(matchesVar);
+        for (const v of list) {
+          out.push({
+            id: v.id,
+            product_id: p.id,
+            variation_id: v.id,
+            name: `${p.name} - ${v.name}`,
+            sku: v.sku ?? p.sku ?? null,
+            barcode: v.barcode ?? null,
+            price: Number(v.price ?? p.price) || 0,
+            stock: v.stock,
+            img: v.image_url ?? p.img ?? null,
+            unit: p.unit ?? null,
+          });
+        }
+      } else {
+        out.push({
+          id: p.id, product_id: p.id, variation_id: null,
+          name: p.name, sku: p.sku, barcode: p.barcode,
+          price: Number(p.price) || 0, stock: p.stock, img: p.img, unit: p.unit,
+        });
+      }
+    }
+    return out.slice(0, data.limit);
   });
+
+
 
 const quickProductInput = z.object({
   name: z.string().min(1),
@@ -61,11 +111,13 @@ export const createPosQuickProduct = createServerFn({ method: "POST" })
 const saleInput = z.object({
   items: z.array(z.object({
     product_id: z.string().uuid(),
+    variation_id: z.string().uuid().nullable().optional(),
     name: z.string().min(1),
     price: z.number().nonnegative(),
     qty: z.number().int().min(1),
     img: z.string().nullable().optional(),
   })).min(1),
+
   discount: z.number().nonnegative().default(0),
   tax: z.number().nonnegative().default(0),
   paid: z.number().nonnegative().default(0),
@@ -103,13 +155,22 @@ export const createPosSale = createServerFn({ method: "POST" })
       throw new Error(iErr.message);
     }
 
-    // Decrement stock per product (no variation support in POS v1).
+    // Decrement stock — variation stock if provided, else product stock.
     for (const it of data.items) {
-      const { data: p } = await context.supabase.from("products").select("stock").eq("id", it.product_id).maybeSingle();
-      const cur = Number((p as any)?.stock ?? 0);
-      const next = cur - it.qty;
-      await context.supabase.from("products").update({ stock: next, in_stock: next > 0 } as any).eq("id", it.product_id);
+      if (it.variation_id) {
+        const { data: v } = await (context.supabase.from("product_variations" as any) as any)
+          .select("stock").eq("id", it.variation_id).maybeSingle();
+        const cur = Number((v as any)?.stock ?? 0);
+        await (context.supabase.from("product_variations" as any) as any)
+          .update({ stock: cur - it.qty }).eq("id", it.variation_id);
+      } else {
+        const { data: p } = await context.supabase.from("products").select("stock").eq("id", it.product_id).maybeSingle();
+        const cur = Number((p as any)?.stock ?? 0);
+        const next = cur - it.qty;
+        await context.supabase.from("products").update({ stock: next, in_stock: next > 0 } as any).eq("id", it.product_id);
+      }
     }
+
 
     return { id: order.id, total };
   });

@@ -25,8 +25,10 @@ export const Route = createFileRoute("/_authenticated/admin/pos")({
 type Product = {
   id: string; name: string; sku: string | null; barcode: string | null;
   price: number; stock: number | null; img: string | null; unit: string | null;
+  product_id?: string; variation_id?: string | null;
 };
 type CartItem = Product & { qty: number };
+
 
 const money = (n: number) => `৳${n.toFixed(2)}`;
 const textOrDash = (value: unknown) => {
@@ -262,12 +264,14 @@ function PosPage() {
       if (cart.length === 0) throw new Error("Cart is empty");
       if (paid < total) throw new Error("Paid amount is less than total");
       const items = cart.map((c) => ({
-        product_id: String(c.id),
+        product_id: String(c.product_id ?? c.id),
+        variation_id: c.variation_id ?? null,
         name: String(c.name),
         price: Number(c.price) || 0,
         qty: Math.max(1, Math.floor(Number(c.qty) || 1)),
         img: c.img ?? null,
       }));
+
       const snapshot = {
         items: items.map((i) => ({ name: i.name, price: i.price, qty: i.qty })),
         subtotal, discount: Number(discount) || 0, tax: Number(tax) || 0, total,

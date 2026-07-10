@@ -466,7 +466,16 @@ function PosPage() {
                             className={`flex w-full items-center gap-3 border-b border-slate-100 px-3 py-2.5 text-left transition last:border-0 dark:border-slate-800 ${i === activeIdx ? "bg-primary/5" : "hover:bg-slate-50 dark:hover:bg-slate-800"} disabled:cursor-not-allowed disabled:opacity-50`}
                           >
                             <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{p.name}</div>
+                              <div className="flex items-center gap-2">
+                                <div className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                  {p.variation_id ? (p.parent_name ?? p.name) : p.name}
+                                </div>
+                                {p.variation_id && p.variation_name ? (
+                                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                                    {p.variation_name}
+                                  </span>
+                                ) : null}
+                              </div>
                               <div className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap text-[11px] leading-tight text-slate-500">
                                 <span className="min-w-0 truncate">Barcode: {textOrDash(p.barcode)}</span>
                                 <span className="shrink-0 text-slate-300">·</span>
@@ -476,6 +485,7 @@ function PosPage() {
                             <div className="text-right">
                               <div className="text-sm font-bold text-primary">{money(Number(p.price))}</div>
                             </div>
+
 
 
                           </button>

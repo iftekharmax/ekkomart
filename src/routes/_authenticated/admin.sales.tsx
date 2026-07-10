@@ -394,7 +394,7 @@ function SaleDetailsDialog({
                     </tr>
                   </thead>
                   <tbody>
-                    {data.items.map((it) => (
+                    {data.items.map((it: { id: string; name: string; qty: number; price: number }) => (
                       <tr key={it.id} className="border-t">
                         <td className="px-3 py-2 font-medium">{it.name}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{money(it.price)}</td>

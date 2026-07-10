@@ -640,16 +640,28 @@ function escapeHtml(s: string) {
 
 // ============ Drafts (localStorage) ============
 type Draft = {
-  id: string; at: number; cart: CartItem[]; customer: string;
+  id: string; at: number; name?: string; cart: CartItem[]; customer: string;
   discount: number; tax: number; method: "cash" | "card" | "mobile" | "other";
 };
 const DRAFTS_KEY = "pos.drafts.v1";
+const AUTOSAVE_KEY = "pos.autosave.v1";
 function loadDrafts(): Draft[] {
   if (typeof window === "undefined") return [];
   try { return JSON.parse(localStorage.getItem(DRAFTS_KEY) || "[]"); } catch { return []; }
 }
 function persistDrafts(d: Draft[]) {
-  try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(d)); } catch {}
+  try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(d)); } catch { /* ignore */ }
+}
+type AutosaveShape = Omit<Draft, "id" | "at" | "name">;
+function loadAutosave(): AutosaveShape | null {
+  if (typeof window === "undefined") return null;
+  try { const raw = localStorage.getItem(AUTOSAVE_KEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+function persistAutosave(d: AutosaveShape) {
+  try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(d)); } catch { /* ignore */ }
+}
+function clearAutosave() {
+  try { localStorage.removeItem(AUTOSAVE_KEY); } catch { /* ignore */ }
 }
 
 function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove }: {

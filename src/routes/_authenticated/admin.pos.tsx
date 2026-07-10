@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { posSearchProducts, createPosSale } from "@/lib/pos.functions";
+import { posSearchProducts, createPosSale, createPosQuickProduct } from "@/lib/pos.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,6 +32,7 @@ const money = (n: number) => `৳${n.toFixed(2)}`;
 function PosPage() {
   const searchFn = useServerFn(posSearchProducts);
   const saleFn = useServerFn(createPosSale);
+  const quickAddFn = useServerFn(createPosQuickProduct);
 
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -52,9 +53,15 @@ function PosPage() {
   const [method, setMethod] = useState<"cash" | "card" | "mobile" | "other">("cash");
   const [customer, setCustomer] = useState("");
   const [receipt, setReceipt] = useState<null | { id: string; total: number }>(null);
+  const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState<null | { code: string }>(null);
+  const [quickName, setQuickName] = useState("");
+  const [quickPrice, setQuickPrice] = useState<number>(0);
+  const [quickStock, setQuickStock] = useState<number>(1);
   const searchRef = useRef<HTMLInputElement>(null);
   const lastKeyTimeRef = useRef<number>(0);
   const bufferRef = useRef<string>("");
+  const justAddedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { searchRef.current?.focus(); }, []);
 
@@ -62,23 +69,32 @@ function PosPage() {
   const total = Math.max(0, subtotal - discount + tax);
   const change = Math.max(0, paid - total);
 
+  function flashAdded(id: string) {
+    setJustAddedId(id);
+    if (justAddedTimer.current) clearTimeout(justAddedTimer.current);
+    justAddedTimer.current = setTimeout(() => setJustAddedId(null), 1200);
+  }
+
   function addToCart(p: Product) {
+    let ok = true;
     setCart((prev) => {
       const idx = prev.findIndex((i) => i.id === p.id);
       if (idx >= 0) {
         const copy = [...prev];
         const next = copy[idx].qty + 1;
         if (p.stock != null && next > p.stock) {
-          toast.error(`Only ${p.stock} in stock`);
-          return prev;
+          toast.error(`Only ${p.stock} in stock`); ok = false; return prev;
         }
         copy[idx] = { ...copy[idx], qty: next };
         return copy;
       }
-      if (p.stock != null && p.stock <= 0) { toast.error("Out of stock"); return prev; }
+      if (p.stock != null && p.stock <= 0) { toast.error("Out of stock"); ok = false; return prev; }
       return [...prev, { ...p, qty: 1 }];
     });
-    toast.success(`Added: ${p.name}`, { duration: 1200 });
+    if (ok) {
+      flashAdded(p.id);
+      toast.success(`Added: ${p.name}`, { duration: 1200 });
+    }
   }
   function setQty(id: string, qty: number) {
     setCart((prev) => prev.flatMap((it) => {
@@ -91,13 +107,28 @@ function PosPage() {
   function remove(id: string) { setCart((prev) => prev.filter((i) => i.id !== id)); }
   function clearAll() { setCart([]); setDiscount(0); setTax(0); setPaid(0); setCustomer(""); }
 
+  function openNotFound(code: string) {
+    setNotFound({ code });
+    setQuickName("");
+    setQuickPrice(0);
+    setQuickStock(1);
+  }
+
   // Hardware barcode scanner: emits keys very fast + Enter. Detect by inter-key timing.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       const isFormEl = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (target?.isContentEditable ?? false);
-      // Allow scanner to work only when focus isn't on a numeric/other input (search input handled separately)
+
+      // Global shortcut: Ctrl/Cmd+F focus scanner (works from anywhere)
+      if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
+
       if (isFormEl && target !== searchRef.current) return;
 
       const now = Date.now();
@@ -108,18 +139,16 @@ function PosPage() {
         const code = bufferRef.current.trim();
         bufferRef.current = "";
         if (code.length >= 3) {
-          // Look up in suggestions or fetch directly
           void (async () => {
             const rows = (await searchFn({ data: { q: code, limit: 5 } })) as Product[];
             const exact = rows.find((p) => (p.barcode ?? "").toLowerCase() === code.toLowerCase() || (p.sku ?? "").toLowerCase() === code.toLowerCase()) ?? rows[0];
-            if (exact) { addToCart(exact); setQ(""); setOpen(false); }
-            else toast.error(`No product for "${code}"`);
+            if (exact) { addToCart(exact); setQ(""); setOpen(false); searchRef.current?.focus(); }
+            else openNotFound(code);
           })();
         }
         return;
       }
       if (e.key.length === 1) {
-        // Reset buffer if pause > 60ms (human typing)
         if (gap > 60) bufferRef.current = "";
         bufferRef.current += e.key;
       }
@@ -132,13 +161,38 @@ function PosPage() {
     if (!open && suggestions.length > 0 && (e.key === "ArrowDown" || e.key === "ArrowUp")) setOpen(true);
     if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, 0)); }
-    else if (e.key === "Escape") { setOpen(false); }
+    else if (e.key === "Escape") { e.preventDefault(); setQ(""); setOpen(false); setActiveIdx(0); }
     else if (e.key === "Enter") {
-      // Manual pick from suggestions (scanner path handled via global listener + short gap)
+      e.preventDefault();
       const picked = suggestions[activeIdx];
-      if (picked) { addToCart(picked); setQ(""); setOpen(false); setActiveIdx(0); }
+      if (picked) { addToCart(picked); setQ(""); setOpen(false); setActiveIdx(0); searchRef.current?.focus(); }
+      else if (q.trim().length >= 2 && !isFetching && suggestions.length === 0) {
+        openNotFound(q.trim());
+      }
     }
   }
+
+  const quickAdd = useMutation({
+    mutationFn: async () => {
+      if (!quickName.trim()) throw new Error("Name is required");
+      const code = notFound?.code ?? "";
+      const looksLikeBarcode = /^\d{6,}$/.test(code);
+      const res = await quickAddFn({ data: {
+        name: quickName.trim(), price: quickPrice, stock: quickStock,
+        barcode: looksLikeBarcode ? code : null,
+        sku: !looksLikeBarcode && code ? code : null,
+      } });
+      return res as Product;
+    },
+    onSuccess: (p) => {
+      addToCart(p);
+      setNotFound(null);
+      setQ("");
+      searchRef.current?.focus();
+      toast.success(`Created & added: ${p.name}`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const sale = useMutation({
     mutationFn: async () => {
@@ -190,7 +244,12 @@ function PosPage() {
                 {isFetching && suggestions.length === 0 ? (
                   <div className="p-4 text-sm text-slate-500">Searching…</div>
                 ) : suggestions.length === 0 ? (
-                  <div className="p-4 text-sm text-slate-500">No products found for "{q}"</div>
+                  <div className="p-4">
+                    <div className="mb-2 text-sm text-slate-600 dark:text-slate-300">No products found for <b>"{q}"</b></div>
+                    <Button size="sm" type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => openNotFound(q.trim())}>
+                      <Plus className="mr-1 h-4 w-4" /> Add "{q}" manually
+                    </Button>
+                  </div>
                 ) : (
                   <ul className="max-h-80 overflow-y-auto">
                     {suggestions.map((p, i) => {
@@ -235,6 +294,8 @@ function PosPage() {
             <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 dark:bg-slate-800"><ScanLine className="h-3 w-3" /> Scanner ready</span>
             <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 dark:bg-slate-800">↑↓ navigate</span>
             <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 dark:bg-slate-800">Enter add</span>
+            <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 dark:bg-slate-800">Esc clear</span>
+            <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 dark:bg-slate-800">Ctrl+F focus</span>
           </div>
         </div>
 
@@ -263,7 +324,10 @@ function PosPage() {
             ) : (
               <ul className="space-y-2">
                 {cart.map((it) => (
-                  <li key={it.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                  <li key={it.id} className={`flex items-center gap-3 rounded-xl border p-3 shadow-sm transition-all ${justAddedId === it.id ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300 dark:border-emerald-500 dark:bg-emerald-950/40" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"}`}>
+                    {justAddedId === it.id && (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                    )}
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
                       {it.img ? <img src={it.img} alt="" className="h-full w-full object-cover" /> : (
                         <div className="grid h-full place-items-center text-slate-300"><Package className="h-5 w-5" /></div>
@@ -379,6 +443,39 @@ function PosPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => window.print()}>Print</Button>
             <Button onClick={() => { setReceipt(null); searchRef.current?.focus(); }}>New sale</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!notFound} onOpenChange={(o) => !o && setNotFound(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-primary" /> Product not found</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="rounded-lg bg-amber-50 p-3 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+              No product matched <b>"{notFound?.code}"</b>. Add it now to continue checkout.
+            </div>
+            <label className="block text-xs text-slate-500">Name
+              <Input autoFocus value={quickName} onChange={(e) => setQuickName(e.target.value)} placeholder="Product name" className="mt-1 h-9" />
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block text-xs text-slate-500">Price
+                <Input type="number" min={0} step="0.01" value={quickPrice} onChange={(e) => setQuickPrice(Math.max(0, Number(e.target.value) || 0))} className="mt-1 h-9" />
+              </label>
+              <label className="block text-xs text-slate-500">Stock
+                <Input type="number" min={0} value={quickStock} onChange={(e) => setQuickStock(Math.max(0, Number(e.target.value) || 0))} className="mt-1 h-9" />
+              </label>
+            </div>
+            <div className="text-[11px] text-slate-500">
+              {/^\d{6,}$/.test(notFound?.code ?? "") ? "Saved as barcode." : "Saved as SKU."}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNotFound(null)}>Cancel</Button>
+            <Button disabled={quickAdd.isPending || !quickName.trim()} onClick={() => quickAdd.mutate()}>
+              {quickAdd.isPending ? "Adding…" : "Create & add"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

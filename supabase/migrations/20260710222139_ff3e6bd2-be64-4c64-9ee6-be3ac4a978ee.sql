@@ -1,0 +1,2 @@
+DROP POLICY IF EXISTS "Public read product media" ON storage.objects;
+CREATE POLICY "Admins read product media" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'product-media' AND private.has_role(auth.uid(), 'admin'::app_role));

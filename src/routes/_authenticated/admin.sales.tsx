@@ -340,7 +340,7 @@ function SalesPage() {
 
 function SaleDetailsDialog({
   id, onClose, onOpenFull, getFn,
-}: { id: string | null; onClose: () => void; onOpenFull: (id: string) => void; getFn: ReturnType<typeof useServerFn<typeof getPosSale>> }) {
+}: { id: string | null; onClose: () => void; onOpenFull: (id: string) => void; getFn: (args: { data: { id: string } }) => Promise<Awaited<ReturnType<typeof getPosSale>>> }) {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["admin-sale", id],
     queryFn: () => getFn({ data: { id: id! } }),

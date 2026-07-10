@@ -111,11 +111,13 @@ export const createPosQuickProduct = createServerFn({ method: "POST" })
 const saleInput = z.object({
   items: z.array(z.object({
     product_id: z.string().uuid(),
+    variation_id: z.string().uuid().nullable().optional(),
     name: z.string().min(1),
     price: z.number().nonnegative(),
     qty: z.number().int().min(1),
     img: z.string().nullable().optional(),
   })).min(1),
+
   discount: z.number().nonnegative().default(0),
   tax: z.number().nonnegative().default(0),
   paid: z.number().nonnegative().default(0),

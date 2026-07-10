@@ -371,8 +371,9 @@ function SalesPage() {
 }
 
 function SaleDetailsDialog({
-  id, onClose, onOpenFull, getFn,
-}: { id: string | null; onClose: () => void; onOpenFull: (id: string) => void; getFn: (args: { data: { id: string } }) => Promise<Awaited<ReturnType<typeof getPosSale>>> }) {
+  id, onClose, getFn,
+}: { id: string | null; onClose: () => void; getFn: (args: { data: { id: string } }) => Promise<Awaited<ReturnType<typeof getPosSale>>> }) {
+
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-sale", id],
     queryFn: () => getFn({ data: { id: id! } }),

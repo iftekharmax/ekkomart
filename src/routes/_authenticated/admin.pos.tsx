@@ -606,7 +606,7 @@ function PosPage() {
         </div>
       </aside>
 
-      <DraftsDialog open={draftsOpen} onOpenChange={setDraftsOpen} drafts={drafts} onLoad={loadDraft} onRemove={removeDraft} />
+      <DraftsDialog open={draftsOpen} onOpenChange={setDraftsOpen} drafts={drafts} onLoad={loadDraft} onRemove={removeDraft} container={portalContainer} />
       <CalculatorDialog
         open={calcOpen}
         onOpenChange={setCalcOpen}
@@ -617,11 +617,12 @@ function PosPage() {
           toast.success(`Qty set to ${Math.max(1, Math.floor(n))}`);
         }}
         onApplyDiscount={(n) => { setDiscount(Math.max(0, n)); toast.success(`Discount set to ${money(Math.max(0, n))}`); }}
+        container={portalContainer}
       />
 
 
       <Dialog open={!!notFound} onOpenChange={(o) => !o && setNotFound(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent container={portalContainer} className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-primary" /> Product not found</DialogTitle>
           </DialogHeader>

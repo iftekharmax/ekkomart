@@ -420,7 +420,7 @@ function PosPage() {
             className="h-12 w-full text-base font-bold"
           >
             <Wallet className="mr-2 h-5 w-5" />
-            {sale.isPending ? "Processing…" : `Complete sale · ${money(total)}`}
+            {sale.isPending ? "Processing…" : `Pay · ${money(total)}`}
           </Button>
         </div>
       </aside>

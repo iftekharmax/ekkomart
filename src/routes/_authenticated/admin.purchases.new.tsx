@@ -176,8 +176,8 @@ function NewPurchasePage() {
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div>
-          <Label>Note</Label>
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
+          <Label>Invoice No.</Label>
+          <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Auto-generate if empty" />
         </div>
       </div>
 

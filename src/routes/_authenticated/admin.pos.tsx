@@ -475,14 +475,17 @@ function PosPage() {
         </div>
 
         {/* Cart list (moved to left, spacious) */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4 text-primary" />
-              <span className="text-sm font-bold">Cart ({cart.length})</span>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-lg bg-primary/10 text-primary">
+                <ShoppingCart className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">Cart</span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-slate-600 dark:bg-slate-800 dark:text-slate-300">{cart.length}</span>
             </div>
             {cart.length > 0 && (
-              <button onClick={clearAll} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <button onClick={clearAll} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/40">
                 <X className="h-3.5 w-3.5" /> Clear all
               </button>
             )}
@@ -491,29 +494,32 @@ function PosPage() {
             {cart.length === 0 ? (
               <div className="grid h-full place-items-center py-16 text-center text-sm text-slate-500">
                 <div>
-                  <ScanLine className="mx-auto mb-3 h-12 w-12 text-slate-300" />
-                  <div className="font-medium">Ready to scan</div>
-                  <div className="text-xs">Scan a barcode or search above to add items.</div>
+                  <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-slate-100 dark:bg-slate-800">
+                    <ScanLine className="h-8 w-8 text-slate-400" />
+                  </div>
+                  <div className="text-base font-semibold text-slate-700 dark:text-slate-200">Ready to scan</div>
+                  <div className="mt-1 text-xs text-slate-500">Scan a barcode or search above to add items.</div>
                 </div>
               </div>
             ) : (
               <ul className="space-y-2">
                 {cart.map((it) => (
-                  <li key={it.id} onClick={() => setSelectedCartId(it.id)} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 shadow-sm transition-all ${selectedCartId === it.id ? "border-primary bg-primary/5 ring-2 ring-primary/30" : "border-slate-200 bg-white hover:border-primary/40 dark:border-slate-800 dark:bg-slate-950"}`}>
+                  <li key={it.id} onClick={() => setSelectedCartId(it.id)} className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-3.5 transition-all ${selectedCartId === it.id ? "border-primary bg-primary/[0.06] shadow-md shadow-primary/10 ring-1 ring-primary/30" : "border-slate-200/80 bg-white hover:border-primary/40 hover:shadow-sm dark:border-slate-800 dark:bg-slate-950"}`}>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold">{it.name}</div>
-                      <div className="text-xs text-slate-500">{money(Number(it.price))} × {it.qty} = <b className="text-slate-800 dark:text-slate-100">{money(Number(it.price) * it.qty)}</b></div>
+                      <div className="truncate text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">{it.name}</div>
+                      <div className="mt-0.5 text-xs tabular-nums text-slate-500">{money(Number(it.price))} × {it.qty} = <b className="text-slate-800 dark:text-slate-100">{money(Number(it.price) * it.qty)}</b></div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setQty(it.id, it.qty - 1)} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"><Minus className="h-3.5 w-3.5" /></button>
+                    <div className="flex items-center gap-1 rounded-xl bg-slate-100/70 p-0.5 dark:bg-slate-800/60">
+                      <button onClick={(e) => { e.stopPropagation(); setQty(it.id, it.qty - 1); }} className="grid h-7 w-7 place-items-center rounded-lg text-slate-600 transition hover:bg-white hover:text-slate-900 hover:shadow-sm dark:text-slate-300 dark:hover:bg-slate-700"><Minus className="h-3.5 w-3.5" /></button>
                       <input
                         value={it.qty}
+                        onClick={(e) => e.stopPropagation()}
                         onChange={(e) => setQty(it.id, Math.max(0, Number(e.target.value) || 0))}
-                        className="h-8 w-12 rounded-md border border-slate-200 bg-transparent text-center text-sm dark:border-slate-700"
+                        className="h-7 w-10 rounded-md bg-transparent text-center text-sm font-semibold tabular-nums outline-none"
                       />
-                      <button onClick={() => setQty(it.id, it.qty + 1)} className="grid h-8 w-8 place-items-center rounded-md border border-slate-200 hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"><Plus className="h-3.5 w-3.5" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); setQty(it.id, it.qty + 1); }} className="grid h-7 w-7 place-items-center rounded-lg text-slate-600 transition hover:bg-white hover:text-slate-900 hover:shadow-sm dark:text-slate-300 dark:hover:bg-slate-700"><Plus className="h-3.5 w-3.5" /></button>
                     </div>
-                    <button onClick={() => remove(it.id)} className="ml-1 grid h-8 w-8 place-items-center rounded-md text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); remove(it.id); }} className="ml-1 grid h-8 w-8 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950"><Trash2 className="h-4 w-4" /></button>
                   </li>
                 ))}
               </ul>

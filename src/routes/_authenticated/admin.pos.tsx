@@ -69,23 +69,32 @@ function PosPage() {
   const total = Math.max(0, subtotal - discount + tax);
   const change = Math.max(0, paid - total);
 
+  function flashAdded(id: string) {
+    setJustAddedId(id);
+    if (justAddedTimer.current) clearTimeout(justAddedTimer.current);
+    justAddedTimer.current = setTimeout(() => setJustAddedId(null), 1200);
+  }
+
   function addToCart(p: Product) {
+    let ok = true;
     setCart((prev) => {
       const idx = prev.findIndex((i) => i.id === p.id);
       if (idx >= 0) {
         const copy = [...prev];
         const next = copy[idx].qty + 1;
         if (p.stock != null && next > p.stock) {
-          toast.error(`Only ${p.stock} in stock`);
-          return prev;
+          toast.error(`Only ${p.stock} in stock`); ok = false; return prev;
         }
         copy[idx] = { ...copy[idx], qty: next };
         return copy;
       }
-      if (p.stock != null && p.stock <= 0) { toast.error("Out of stock"); return prev; }
+      if (p.stock != null && p.stock <= 0) { toast.error("Out of stock"); ok = false; return prev; }
       return [...prev, { ...p, qty: 1 }];
     });
-    toast.success(`Added: ${p.name}`, { duration: 1200 });
+    if (ok) {
+      flashAdded(p.id);
+      toast.success(`Added: ${p.name}`, { duration: 1200 });
+    }
   }
   function setQty(id: string, qty: number) {
     setCart((prev) => prev.flatMap((it) => {
@@ -98,13 +107,28 @@ function PosPage() {
   function remove(id: string) { setCart((prev) => prev.filter((i) => i.id !== id)); }
   function clearAll() { setCart([]); setDiscount(0); setTax(0); setPaid(0); setCustomer(""); }
 
+  function openNotFound(code: string) {
+    setNotFound({ code });
+    setQuickName("");
+    setQuickPrice(0);
+    setQuickStock(1);
+  }
+
   // Hardware barcode scanner: emits keys very fast + Enter. Detect by inter-key timing.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
       const isFormEl = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (target?.isContentEditable ?? false);
-      // Allow scanner to work only when focus isn't on a numeric/other input (search input handled separately)
+
+      // Global shortcut: Ctrl/Cmd+F focus scanner (works from anywhere)
+      if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
+
       if (isFormEl && target !== searchRef.current) return;
 
       const now = Date.now();
@@ -115,18 +139,16 @@ function PosPage() {
         const code = bufferRef.current.trim();
         bufferRef.current = "";
         if (code.length >= 3) {
-          // Look up in suggestions or fetch directly
           void (async () => {
             const rows = (await searchFn({ data: { q: code, limit: 5 } })) as Product[];
             const exact = rows.find((p) => (p.barcode ?? "").toLowerCase() === code.toLowerCase() || (p.sku ?? "").toLowerCase() === code.toLowerCase()) ?? rows[0];
-            if (exact) { addToCart(exact); setQ(""); setOpen(false); }
-            else toast.error(`No product for "${code}"`);
+            if (exact) { addToCart(exact); setQ(""); setOpen(false); searchRef.current?.focus(); }
+            else openNotFound(code);
           })();
         }
         return;
       }
       if (e.key.length === 1) {
-        // Reset buffer if pause > 60ms (human typing)
         if (gap > 60) bufferRef.current = "";
         bufferRef.current += e.key;
       }
@@ -139,13 +161,38 @@ function PosPage() {
     if (!open && suggestions.length > 0 && (e.key === "ArrowDown" || e.key === "ArrowUp")) setOpen(true);
     if (e.key === "ArrowDown") { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, 0)); }
-    else if (e.key === "Escape") { setOpen(false); }
+    else if (e.key === "Escape") { e.preventDefault(); setQ(""); setOpen(false); setActiveIdx(0); }
     else if (e.key === "Enter") {
-      // Manual pick from suggestions (scanner path handled via global listener + short gap)
+      e.preventDefault();
       const picked = suggestions[activeIdx];
-      if (picked) { addToCart(picked); setQ(""); setOpen(false); setActiveIdx(0); }
+      if (picked) { addToCart(picked); setQ(""); setOpen(false); setActiveIdx(0); searchRef.current?.focus(); }
+      else if (q.trim().length >= 2 && !isFetching && suggestions.length === 0) {
+        openNotFound(q.trim());
+      }
     }
   }
+
+  const quickAdd = useMutation({
+    mutationFn: async () => {
+      if (!quickName.trim()) throw new Error("Name is required");
+      const code = notFound?.code ?? "";
+      const looksLikeBarcode = /^\d{6,}$/.test(code);
+      const res = await quickAddFn({ data: {
+        name: quickName.trim(), price: quickPrice, stock: quickStock,
+        barcode: looksLikeBarcode ? code : null,
+        sku: !looksLikeBarcode && code ? code : null,
+      } });
+      return res as Product;
+    },
+    onSuccess: (p) => {
+      addToCart(p);
+      setNotFound(null);
+      setQ("");
+      searchRef.current?.focus();
+      toast.success(`Created & added: ${p.name}`);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const sale = useMutation({
     mutationFn: async () => {

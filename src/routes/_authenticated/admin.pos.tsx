@@ -483,6 +483,15 @@ function PosPage() {
   );
 }
 
+function Row({ label, value }: { label: React.ReactNode; value: React.ReactNode }) {
+  return (
+    <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
+      <span>{label}</span><span>{value}</span>
+    </div>
+  );
+}
+
+
 type ReceiptData = {
   id: string;
   items: { name: string; price: number; qty: number }[];

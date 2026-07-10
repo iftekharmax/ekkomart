@@ -25,8 +25,10 @@ export const Route = createFileRoute("/_authenticated/admin/pos")({
 type Product = {
   id: string; name: string; sku: string | null; barcode: string | null;
   price: number; stock: number | null; img: string | null; unit: string | null;
+  product_id?: string; variation_id?: string | null;
 };
 type CartItem = Product & { qty: number };
+
 
 const money = (n: number) => `৳${n.toFixed(2)}`;
 const textOrDash = (value: unknown) => {

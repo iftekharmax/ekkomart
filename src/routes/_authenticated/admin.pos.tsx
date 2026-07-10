@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -306,7 +306,8 @@ function PosPage() {
 
 
 
-  const posRootRef = useRef<HTMLDivElement | null>(null);
+  const [posRootEl, setPosRootEl] = useState<HTMLDivElement | null>(null);
+  const posRootRef = useCallback((el: HTMLDivElement | null) => setPosRootEl(el), []);
   const fsBusyRef = useRef(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   useEffect(() => {
@@ -334,9 +335,8 @@ function PosPage() {
   }, []);
   const toggleFullscreen = async () => {
     if (fsBusyRef.current) return;
-    // Fullscreen the root <html> so Radix portals (Select, Dialog, Toaster)
-    // stay inside the fullscreen element and remain interactive.
-    const el = document.documentElement;
+    const el = posRootEl;
+    if (!el) return;
     if (typeof el.requestFullscreen !== "function" || typeof document.exitFullscreen !== "function") {
       toast.message("Fullscreen isn’t supported in this browser.");
       return;
@@ -356,6 +356,9 @@ function PosPage() {
       fsBusyRef.current = false;
     }
   };
+  // While in fullscreen on the POS container, portals (Select, etc.) must render
+  // inside it or they end up hidden outside the fullscreen element.
+  const portalContainer = isFullscreen ? posRootEl : undefined;
 
   return (
     <div ref={posRootRef} className="-m-4 grid gap-4 bg-slate-50 p-4 dark:bg-slate-950 sm:-m-6 sm:p-6 lg:-m-8 lg:h-[calc(100dvh-2rem)] lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden lg:p-6">
@@ -539,7 +542,7 @@ function PosPage() {
             <label className="text-xs text-slate-500">Method
               <Select value={method} onValueChange={(v) => setMethod(v as any)}>
                 <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent container={portalContainer}>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="card">Card</SelectItem>
                   <SelectItem value="mobile">Mobile</SelectItem>
@@ -553,7 +556,7 @@ function PosPage() {
             <label className="text-xs text-slate-500">Tax
               <Select value={taxMode} onValueChange={(v) => setTaxMode(v as "default" | "free")}>
                 <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent container={portalContainer}>
                   <SelectItem value="default">Default (8%)</SelectItem>
                   <SelectItem value="free">Tax free</SelectItem>
                 </SelectContent>

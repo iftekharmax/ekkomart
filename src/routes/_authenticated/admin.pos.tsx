@@ -163,6 +163,12 @@ function PosPage() {
         searchRef.current?.select();
         return;
       }
+      // Global shortcut: Ctrl/Cmd+D save current cart as draft
+      if ((e.ctrlKey || e.metaKey) && (e.key === "d" || e.key === "D")) {
+        e.preventDefault();
+        saveDraft();
+        return;
+      }
 
       if (isFormEl && target !== searchRef.current) return;
 

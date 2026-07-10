@@ -119,22 +119,26 @@ function PosPage() {
       {/* LEFT: Products */}
       <section className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="border-b border-slate-200 bg-gradient-to-r from-primary/5 to-transparent p-4 dark:border-slate-800">
-        <div className="mb-3 flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              ref={searchRef}
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={onSearchKey}
-              placeholder="Search or scan barcode / SKU / name…"
-              className="pl-9"
-            />
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                ref={searchRef}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={onSearchKey}
+                placeholder="Search or scan barcode / SKU / name…"
+                className="h-10 pl-9"
+              />
+            </div>
+            <span className="hidden items-center gap-1 rounded-lg border border-slate-200 bg-white/70 px-2 py-1 text-xs text-slate-500 sm:inline-flex dark:border-slate-800 dark:bg-slate-950/70">
+              <ScanLine className="h-3.5 w-3.5" /> Scanner ready
+            </span>
           </div>
-          <span className="hidden items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-500 sm:inline-flex dark:border-slate-800">
-            <ScanLine className="h-3.5 w-3.5" /> Scanner ready
-          </span>
         </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+
 
         {isFetching && (products as Product[]).length === 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">

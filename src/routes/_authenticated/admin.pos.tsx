@@ -732,12 +732,17 @@ function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove }: {
         ) : (
           <ul className="max-h-96 space-y-2 overflow-y-auto">
             {drafts.map((d) => {
-              const total = d.cart.reduce((s, it) => s + it.price * it.qty, 0) - d.discount + d.tax;
+              const subtotal = d.cart.reduce((s, it) => s + it.price * it.qty, 0);
+              const tax = d.taxMode === "default" ? Math.round((subtotal - d.discount) * 0.08 * 100) / 100 : 0;
+              const total = Math.max(0, subtotal - d.discount + tax);
+              const itemsCount = d.cart.reduce((s, it) => s + it.qty, 0);
+              const dt = new Date(d.at);
               return (
                 <li key={d.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold">{d.name || `${d.customer || "Walk-in"} · ${d.cart.length} items`}</div>
-                    <div className="text-[11px] text-slate-500">{new Date(d.at).toLocaleString()} · {d.cart.length} items · {money(Math.max(0, total))}</div>
+                    <div className="truncate text-sm font-semibold">📱 {d.customer || "Walk-in"}</div>
+                    <div className="text-[11px] text-slate-500">{itemsCount} items · {money(total)}</div>
+                    <div className="text-[11px] text-slate-400">{dt.toLocaleDateString()} · {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
                   </div>
                   <Button size="sm" onClick={() => onLoad(d.id)}>Load</Button>
                   <Button size="sm" variant="outline" title="Delete draft" onClick={() => onRemove(d.id)}><Trash2 className="h-3.5 w-3.5" /></Button>

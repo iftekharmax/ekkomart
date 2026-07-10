@@ -207,7 +207,7 @@ function PosPage() {
           )}
         </header>
 
-        <div className="max-h-[42vh] flex-1 overflow-y-auto p-3 lg:max-h-none">
+        <div className="max-h-[38vh] min-h-0 flex-1 overflow-y-auto p-3 lg:max-h-none">
           {cart.length === 0 ? (
             <div className="grid place-items-center py-14 text-center text-sm text-slate-500">
               <ShoppingCart className="mb-2 h-8 w-8 text-slate-300" />

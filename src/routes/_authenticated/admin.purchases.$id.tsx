@@ -66,9 +66,12 @@ function PurchaseDetail() {
     </div>
   );
   const { header, items, payments, returns } = data as any;
-  const returnedTotal = (returns ?? []).reduce((s: number, r: any) => s + Number(r.total ?? 0), 0);
-  const due = Math.max(0, Number(header.total) - returnedTotal - Number(header.paid));
-  const status = due <= 0 ? "Paid" : Number(header.paid) > 0 ? "Partial" : "Unpaid";
+  const activeReturns = (returns ?? []).filter((r: any) => r.status !== "voided");
+  const returnedTotal = activeReturns.reduce((s: number, r: any) => s + Number(r.total ?? 0), 0);
+  const paidTotal = Number(header.paid ?? 0);
+  const total = Number(header.total);
+  const due = Math.max(0, total - returnedTotal - paidTotal);
+  const status = due <= 0 ? "Paid" : paidTotal > 0 ? "Partial" : "Unpaid";
 
 
   return (

@@ -372,7 +372,7 @@ function SalesPage() {
 function SaleDetailsDialog({
   id, onClose, onOpenFull, getFn,
 }: { id: string | null; onClose: () => void; onOpenFull: (id: string) => void; getFn: (args: { data: { id: string } }) => Promise<Awaited<ReturnType<typeof getPosSale>>> }) {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-sale", id],
     queryFn: () => getFn({ data: { id: id! } }),
     enabled: !!id,
@@ -387,24 +387,31 @@ function SaleDetailsDialog({
 
   return (
     <Dialog open={!!id} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl overflow-hidden p-0">
+      <DialogContent className="max-w-2xl overflow-hidden p-0" aria-busy={isLoading}>
         <DialogHeader className="border-b bg-gradient-to-br from-primary/10 via-primary/5 to-transparent px-6 py-5">
           <DialogTitle className="flex items-center gap-2 text-xl">
-            <Receipt className="h-5 w-5 text-primary" />Sale details
+            <Receipt className="h-5 w-5 text-primary" aria-hidden />Sale details
           </DialogTitle>
           <DialogDescription>
-            {data ? <>Invoice <span className="font-mono font-semibold text-foreground">{data.invoice}</span> · {fmtDT(data.created_at)}</> : "Loading…"}
+            {isLoading ? "Loading sale…" : data ? <>Invoice <span className="font-mono font-semibold text-foreground">{data.invoice}</span> · {fmtDT(data.created_at)}</> : "No sale selected"}
           </DialogDescription>
         </DialogHeader>
 
         <div className="max-h-[70vh] overflow-y-auto px-6 py-5">
           {isLoading ? (
-            <div className="space-y-3">
-              <div className="h-16 animate-pulse rounded-lg bg-muted" />
-              <div className="h-40 animate-pulse rounded-lg bg-muted" />
+            <div className="flex flex-col items-center justify-center gap-3 py-14 text-center" role="status" aria-live="polite">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Fetching sale details…</p>
             </div>
-          ) : isError || !data ? (
-            <p className="py-10 text-center text-sm text-destructive">Failed to load sale.</p>
+          ) : isError ? (
+            <div className="flex flex-col items-center gap-3 py-12 text-center">
+              <p className="text-sm text-destructive">Failed to load sale.</p>
+              <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
+            </div>
+          ) : !data ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">No details available.</p>
+          ) : data.items.length === 0 ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">This sale has no items.</p>
           ) : (
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

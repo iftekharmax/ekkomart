@@ -12,7 +12,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Minus, Plus, Trash2, Search, ScanLine, ShoppingCart, Wallet, X, Receipt, CheckCircle2, Package,
+  Minus, Plus, Trash2, Search, ScanLine, ShoppingCart, Wallet, X, CheckCircle2, Package,
+  Calculator as CalcIcon, Save, FileText, Delete,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -52,7 +53,9 @@ function PosPage() {
   const [paid, setPaid] = useState(0);
   const [method, setMethod] = useState<"cash" | "card" | "mobile" | "other">("cash");
   const [customer, setCustomer] = useState("");
-  const [receipt, setReceipt] = useState<null | { id: string; total: number }>(null);
+  const [drafts, setDrafts] = useState<Draft[]>(() => loadDrafts());
+  const [draftsOpen, setDraftsOpen] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState<null | { code: string }>(null);
   const [quickName, setQuickName] = useState("");
@@ -210,13 +213,33 @@ function PosPage() {
       return { res: res as { id: string; total: number }, snapshot };
     },
     onSuccess: ({ res, snapshot }) => {
-      setReceipt(res);
       printThermalReceipt({ id: res.id, ...snapshot });
       clearAll();
-      toast.success("Sale completed");
+      toast.success(`Sale #${res.id.slice(0, 8).toUpperCase()} — ${money(res.total)}`);
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  function saveDraft() {
+    if (cart.length === 0) { toast.error("Cart is empty"); return; }
+    const d: Draft = { id: crypto.randomUUID(), at: Date.now(), cart, customer, discount, tax, method };
+    const next = [d, ...drafts].slice(0, 20);
+    setDrafts(next); persistDrafts(next);
+    clearAll();
+    toast.success("Saved as draft");
+  }
+  function loadDraft(id: string) {
+    const d = drafts.find((x) => x.id === id); if (!d) return;
+    setCart(d.cart); setCustomer(d.customer); setDiscount(d.discount); setTax(d.tax); setMethod(d.method);
+    const next = drafts.filter((x) => x.id !== id);
+    setDrafts(next); persistDrafts(next);
+    setDraftsOpen(false);
+    toast.success("Draft loaded");
+  }
+  function removeDraft(id: string) {
+    const next = drafts.filter((x) => x.id !== id);
+    setDrafts(next); persistDrafts(next);
+  }
 
 
   return (
@@ -367,7 +390,19 @@ function PosPage() {
               <div className="text-[11px] text-slate-500">Review & complete sale</div>
             </div>
           </div>
+          <div className="flex items-center gap-1">
+            <Button type="button" variant="outline" size="sm" onClick={saveDraft} className="h-8 gap-1 px-2 text-xs" title="Save current cart as draft">
+              <Save className="h-3.5 w-3.5" /> Draft
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setDraftsOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Open saved drafts">
+              <FileText className="h-3.5 w-3.5" /> {drafts.length}
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setCalcOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Calculator">
+              <CalcIcon className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </header>
+
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="mb-3 grid grid-cols-2 gap-2">
@@ -425,27 +460,9 @@ function PosPage() {
         </div>
       </aside>
 
-      <Dialog open={!!receipt} onOpenChange={(o) => !o && setReceipt(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-emerald-600" /> Sale completed</DialogTitle>
-          </DialogHeader>
-          {receipt && (
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-slate-500"><Receipt className="h-4 w-4" /> Sale ID</div>
-              <div className="rounded-lg bg-slate-50 p-2 font-mono text-xs dark:bg-slate-900">{receipt.id}</div>
-              <div className="flex items-center justify-between rounded-lg bg-primary/10 p-3">
-                <span className="text-sm font-semibold">Total</span>
-                <span className="text-lg font-black text-primary">{money(receipt.total)}</span>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => window.print()}>Print</Button>
-            <Button onClick={() => { setReceipt(null); searchRef.current?.focus(); }}>New sale</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DraftsDialog open={draftsOpen} onOpenChange={setDraftsOpen} drafts={drafts} onLoad={loadDraft} onRemove={removeDraft} />
+      <CalculatorDialog open={calcOpen} onOpenChange={setCalcOpen} />
+
 
       <Dialog open={!!notFound} onOpenChange={(o) => !o && setNotFound(null)}>
         <DialogContent className="sm:max-w-md">
@@ -500,63 +517,198 @@ type ReceiptData = {
 };
 
 function printThermalReceipt(r: ReceiptData) {
-  const win = window.open("", "_blank", "width=380,height=640");
+  const win = window.open("", "_blank", "width=380,height=720");
   if (!win) return;
-  const rows = r.items.map((it) => `
-    <tr>
-      <td class="n">${escapeHtml(it.name)}<div class="m">${it.qty} × ৳${it.price.toFixed(2)}</div></td>
+  const rows = r.items.map((it, i) => `
+    <tr class="it">
+      <td class="idx">${i + 1}</td>
+      <td class="n"><div class="nm">${escapeHtml(it.name)}</div><div class="m">${it.qty} × ৳${it.price.toFixed(2)}</div></td>
       <td class="a">৳${(it.qty * it.price).toFixed(2)}</td>
     </tr>`).join("");
   const now = new Date();
   const dt = now.toLocaleString();
+  const itemsCount = r.items.reduce((s, it) => s + it.qty, 0);
   win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Receipt ${r.id}</title>
   <style>
     @page { size: 80mm auto; margin: 0; }
     * { box-sizing: border-box; }
-    html,body { margin:0; padding:0; }
-    body { font-family: 'Menlo','Consolas',ui-monospace,monospace; color:#000; padding:8px 10px; width:80mm; font-size:12px; }
+    html,body { margin:0; padding:0; background:#fff; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; color:#000; padding:10px 10px 14px; width:80mm; font-size:12px; -webkit-font-smoothing:antialiased; }
     .c { text-align:center; }
-    .b { font-weight:800; }
-    h1 { font-size:16px; margin:0 0 2px; letter-spacing:1px; }
-    .muted { color:#333; font-size:11px; }
-    hr { border:none; border-top:1px dashed #000; margin:8px 0; }
+    h1 { font-size:20px; margin:0; letter-spacing:3px; font-weight:900; }
+    .tag { display:inline-block; margin-top:4px; padding:2px 8px; border:1px solid #000; border-radius:999px; font-size:9px; letter-spacing:2px; font-weight:700; text-transform:uppercase; }
+    .addr { margin-top:4px; font-size:10px; color:#222; line-height:1.35; }
+    .divider { border:none; border-top:1px dashed #000; margin:8px 0; }
+    .solid { border:none; border-top:1.5px solid #000; margin:8px 0; }
+    .meta { display:grid; grid-template-columns:auto 1fr; gap:2px 8px; font-size:11px; }
+    .meta b { font-weight:700; }
     table { width:100%; border-collapse:collapse; }
-    td { vertical-align:top; padding:2px 0; font-size:12px; }
-    td.a { text-align:right; white-space:nowrap; padding-left:6px; }
-    .m { color:#444; font-size:10px; }
-    .row { display:flex; justify-content:space-between; font-size:12px; padding:1px 0; }
-    .total { font-size:15px; font-weight:800; padding:4px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; margin-top:4px; }
-    .foot { margin-top:10px; text-align:center; font-size:11px; }
+    thead th { text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; padding:4px 0; border-bottom:1px solid #000; }
+    thead th.a { text-align:right; }
+    td { vertical-align:top; padding:5px 0; font-size:12px; }
+    td.idx { width:16px; color:#555; font-size:10px; }
+    td.a { text-align:right; white-space:nowrap; padding-left:6px; font-weight:700; }
+    .nm { font-weight:700; line-height:1.25; }
+    .m { color:#444; font-size:10px; margin-top:1px; }
+    .row { display:flex; justify-content:space-between; font-size:12px; padding:2px 0; }
+    .row.strong { font-weight:700; }
+    .total-box { margin-top:6px; padding:8px 6px; background:#000; color:#fff; border-radius:6px; display:flex; justify-content:space-between; align-items:center; font-weight:900; }
+    .total-box .lbl { font-size:11px; letter-spacing:2px; }
+    .total-box .val { font-size:18px; }
+    .pay { margin-top:6px; padding:6px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; }
+    .foot { margin-top:12px; text-align:center; font-size:11px; }
+    .foot .thanks { font-weight:800; font-size:13px; letter-spacing:1px; }
+    .foot .sub { color:#333; margin-top:2px; }
+    .barcode { margin-top:10px; text-align:center; font-family: 'Libre Barcode 39', 'Courier New', monospace; font-size:28px; letter-spacing:2px; }
+    .id { font-family: 'Courier New', monospace; font-size:10px; text-align:center; margin-top:2px; color:#333; }
   </style></head><body>
     <div class="c">
       <h1>TOKYOHALAL</h1>
-      <div class="muted">POS Sale Receipt</div>
+      <div class="tag">Official Sale Receipt</div>
+      <div class="addr">Halal Food & Grocery<br/>Dhaka, Bangladesh</div>
     </div>
-    <hr/>
-    <div class="row"><span>Date</span><span>${dt}</span></div>
-    <div class="row"><span>Sale</span><span>#${r.id.slice(0, 8).toUpperCase()}</span></div>
-    <div class="row"><span>Customer</span><span>${escapeHtml(r.customer)}</span></div>
-    <div class="row"><span>Payment</span><span>${r.method.toUpperCase()}</span></div>
-    <hr/>
-    <table>${rows}</table>
-    <hr/>
+    <hr class="solid"/>
+    <div class="meta">
+      <b>Date</b><span>${dt}</span>
+      <b>Invoice</b><span>#${r.id.slice(0, 8).toUpperCase()}</span>
+      <b>Customer</b><span>${escapeHtml(r.customer)}</span>
+      <b>Payment</b><span>${r.method.toUpperCase()}</span>
+    </div>
+    <hr class="divider"/>
+    <table>
+      <thead><tr><th>#</th><th>Item</th><th class="a">Amount</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <hr class="divider"/>
+    <div class="row"><span>Items</span><span>${itemsCount}</span></div>
     <div class="row"><span>Subtotal</span><span>৳${r.subtotal.toFixed(2)}</span></div>
     ${r.discount ? `<div class="row"><span>Discount</span><span>− ৳${r.discount.toFixed(2)}</span></div>` : ""}
     ${r.tax ? `<div class="row"><span>Tax</span><span>+ ৳${r.tax.toFixed(2)}</span></div>` : ""}
-    <div class="row total"><span>TOTAL</span><span>৳${r.total.toFixed(2)}</span></div>
-    <div class="row"><span>Paid</span><span>৳${r.paid.toFixed(2)}</span></div>
-    <div class="row"><span>Change</span><span>৳${r.change.toFixed(2)}</span></div>
+    <div class="total-box"><span class="lbl">TOTAL</span><span class="val">৳${r.total.toFixed(2)}</span></div>
+    <div class="pay">
+      <div class="row strong"><span>Paid (${r.method})</span><span>৳${r.paid.toFixed(2)}</span></div>
+      <div class="row strong"><span>Change</span><span>৳${r.change.toFixed(2)}</span></div>
+    </div>
     <div class="foot">
-      Thank you for your purchase!<br/>
-      Please come again.
+      <div class="thanks">Thank you for shopping!</div>
+      <div class="sub">Please keep the receipt for exchange or return.</div>
+      <div class="id">${r.id}</div>
     </div>
   </body></html>`);
   win.document.close();
   win.focus();
-  setTimeout(() => { win.print(); setTimeout(() => win.close(), 300); }, 200);
+  setTimeout(() => { win.print(); setTimeout(() => win.close(), 300); }, 250);
 }
 
 function escapeHtml(s: string) {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
 }
+
+// ============ Drafts (localStorage) ============
+type Draft = {
+  id: string; at: number; cart: CartItem[]; customer: string;
+  discount: number; tax: number; method: "cash" | "card" | "mobile" | "other";
+};
+const DRAFTS_KEY = "pos.drafts.v1";
+function loadDrafts(): Draft[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(DRAFTS_KEY) || "[]"); } catch { return []; }
+}
+function persistDrafts(d: Draft[]) {
+  try { localStorage.setItem(DRAFTS_KEY, JSON.stringify(d)); } catch {}
+}
+
+function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove }: {
+  open: boolean; onOpenChange: (o: boolean) => void; drafts: Draft[];
+  onLoad: (id: string) => void; onRemove: (id: string) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Saved drafts</DialogTitle></DialogHeader>
+        {drafts.length === 0 ? (
+          <div className="py-8 text-center text-sm text-slate-500">No drafts saved yet.</div>
+        ) : (
+          <ul className="max-h-96 space-y-2 overflow-y-auto">
+            {drafts.map((d) => {
+              const total = d.cart.reduce((s, it) => s + it.price * it.qty, 0) - d.discount + d.tax;
+              return (
+                <li key={d.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold">{d.customer || "Walk-in"} · {d.cart.length} items</div>
+                    <div className="text-[11px] text-slate-500">{new Date(d.at).toLocaleString()} · {money(Math.max(0, total))}</div>
+                  </div>
+                  <Button size="sm" onClick={() => onLoad(d.id)}>Load</Button>
+                  <Button size="sm" variant="outline" onClick={() => onRemove(d.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============ Calculator ============
+function CalculatorDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const [expr, setExpr] = useState("");
+  const [result, setResult] = useState("0");
+
+  function push(v: string) { setExpr((e) => (e + v).slice(0, 40)); }
+  function clr() { setExpr(""); setResult("0"); }
+  function back() { setExpr((e) => e.slice(0, -1)); }
+  function evaluate() {
+    try {
+      const clean = expr.replace(/[^0-9+\-*/.() %]/g, "").replace(/×/g, "*").replace(/÷/g, "/");
+      if (!clean) return;
+      // eslint-disable-next-line no-new-func
+      const val = Function(`"use strict"; return (${clean})`)();
+      const n = Number(val);
+      if (!Number.isFinite(n)) { setResult("Error"); return; }
+      setResult(String(Math.round(n * 100) / 100));
+      setExpr(String(n));
+    } catch { setResult("Error"); }
+  }
+
+  const keys: Array<{ k: string; label?: React.ReactNode; cls?: string; on: () => void }> = [
+    { k: "C", on: clr, cls: "bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-950/50 dark:text-rose-300" },
+    { k: "(", on: () => push("(") },
+    { k: ")", on: () => push(")") },
+    { k: "÷", on: () => push("/"), cls: "bg-primary/10 text-primary" },
+    { k: "7", on: () => push("7") }, { k: "8", on: () => push("8") }, { k: "9", on: () => push("9") },
+    { k: "×", on: () => push("*"), cls: "bg-primary/10 text-primary" },
+    { k: "4", on: () => push("4") }, { k: "5", on: () => push("5") }, { k: "6", on: () => push("6") },
+    { k: "−", on: () => push("-"), cls: "bg-primary/10 text-primary" },
+    { k: "1", on: () => push("1") }, { k: "2", on: () => push("2") }, { k: "3", on: () => push("3") },
+    { k: "+", on: () => push("+"), cls: "bg-primary/10 text-primary" },
+    { k: "0", on: () => push("0") }, { k: ".", on: () => push(".") },
+    { k: "⌫", label: <Delete className="h-4 w-4" />, on: back },
+    { k: "=", on: evaluate, cls: "bg-primary text-primary-foreground hover:bg-primary/90" },
+  ];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-xs">
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><CalcIcon className="h-5 w-5 text-primary" /> Calculator</DialogTitle></DialogHeader>
+        <div className="rounded-xl bg-slate-900 p-4 text-right text-white shadow-inner">
+          <div className="min-h-[18px] truncate text-xs text-slate-400">{expr || "\u00A0"}</div>
+          <div className="truncate text-3xl font-bold tabular-nums">{result}</div>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {keys.map((b) => (
+            <button
+              key={b.k}
+              onClick={b.on}
+              className={`h-12 rounded-lg text-base font-semibold transition ${b.cls ?? "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700"}`}
+            >
+              {b.label ?? b.k}
+            </button>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 

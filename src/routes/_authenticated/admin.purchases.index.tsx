@@ -44,9 +44,10 @@ function PurchasesPage() {
           <thead className="bg-muted/40 text-left">
             <tr>
               <th className="px-4 py-3 font-semibold">Date</th>
-              <th className="px-4 py-3 font-semibold">Reference</th>
+              <th className="px-4 py-3 font-semibold">Invoice No.</th>
               <th className="px-4 py-3 font-semibold">Supplier</th>
-              <th className="px-4 py-3 font-semibold">Items</th>
+              <th className="px-4 py-3 font-semibold">Products</th>
+              <th className="px-4 py-3 text-right font-semibold">Qty</th>
               <th className="px-4 py-3 text-right font-semibold">Total</th>
               <th className="px-4 py-3 text-right font-semibold">Paid</th>
               <th className="px-4 py-3 text-right font-semibold">Due</th>
@@ -55,17 +56,32 @@ function PurchasesPage() {
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>
             ) : (rows as any[]).length === 0 ? (
-              <tr><td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">No purchases yet.</td></tr>
+              <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No purchases yet.</td></tr>
             ) : (rows as any[]).map((p) => {
               const due = Math.max(0, Number(p.total) - Number(p.paid ?? 0));
+              const items = (p.items ?? []) as any[];
+              const totalQty = items.reduce((s, it) => s + Number(it.quantity ?? 0), 0);
               return (
-              <tr key={p.id} className="border-t">
+              <tr key={p.id} className="border-t align-top">
                 <td className="px-4 py-3">{p.purchase_date}</td>
                 <td className="px-4 py-3 font-mono text-xs">{p.reference}</td>
                 <td className="px-4 py-3">{p.supplier?.name ?? "—"}</td>
-                <td className="px-4 py-3">{(p.items ?? []).length}</td>
+                <td className="px-4 py-3">
+                  {items.length === 0 ? "—" : (
+                    <ul className="space-y-0.5">
+                      {items.map((it) => (
+                        <li key={it.id} className="text-xs">
+                          {it.product?.name ?? "—"}
+                          {it.variation?.name ? <span className="text-muted-foreground"> · {it.variation.name}</span> : null}
+                          <span className="text-muted-foreground"> × {Number(it.quantity)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-right">{totalQty}</td>
                 <td className="px-4 py-3 text-right font-semibold">${Number(p.total).toFixed(2)}</td>
                 <td className="px-4 py-3 text-right">${Number(p.paid ?? 0).toFixed(2)}</td>
                 <td className={`px-4 py-3 text-right font-semibold ${due > 0 ? "text-destructive" : "text-green-600"}`}>${due.toFixed(2)}</td>

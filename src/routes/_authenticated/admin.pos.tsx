@@ -324,7 +324,10 @@ function PosPage() {
             ) : (
               <ul className="space-y-2">
                 {cart.map((it) => (
-                  <li key={it.id} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                  <li key={it.id} className={`flex items-center gap-3 rounded-xl border p-3 shadow-sm transition-all ${justAddedId === it.id ? "border-emerald-400 bg-emerald-50 ring-2 ring-emerald-300 dark:border-emerald-500 dark:bg-emerald-950/40" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"}`}>
+                    {justAddedId === it.id && (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                    )}
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
                       {it.img ? <img src={it.img} alt="" className="h-full w-full object-cover" /> : (
                         <div className="grid h-full place-items-center text-slate-300"><Package className="h-5 w-5" /></div>

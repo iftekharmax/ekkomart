@@ -483,10 +483,71 @@ function PosPage() {
   );
 }
 
-function Row({ label, value }: { label: React.ReactNode; value: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between text-slate-600 dark:text-slate-300">
-      <span>{label}</span><span>{value}</span>
+type ReceiptData = {
+  id: string;
+  items: { name: string; price: number; qty: number }[];
+  subtotal: number; discount: number; tax: number; total: number;
+  paid: number; change: number; method: string; customer: string;
+};
+
+function printThermalReceipt(r: ReceiptData) {
+  const win = window.open("", "_blank", "width=380,height=640");
+  if (!win) return;
+  const rows = r.items.map((it) => `
+    <tr>
+      <td class="n">${escapeHtml(it.name)}<div class="m">${it.qty} × ৳${it.price.toFixed(2)}</div></td>
+      <td class="a">৳${(it.qty * it.price).toFixed(2)}</td>
+    </tr>`).join("");
+  const now = new Date();
+  const dt = now.toLocaleString();
+  win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Receipt ${r.id}</title>
+  <style>
+    @page { size: 80mm auto; margin: 0; }
+    * { box-sizing: border-box; }
+    html,body { margin:0; padding:0; }
+    body { font-family: 'Menlo','Consolas',ui-monospace,monospace; color:#000; padding:8px 10px; width:80mm; font-size:12px; }
+    .c { text-align:center; }
+    .b { font-weight:800; }
+    h1 { font-size:16px; margin:0 0 2px; letter-spacing:1px; }
+    .muted { color:#333; font-size:11px; }
+    hr { border:none; border-top:1px dashed #000; margin:8px 0; }
+    table { width:100%; border-collapse:collapse; }
+    td { vertical-align:top; padding:2px 0; font-size:12px; }
+    td.a { text-align:right; white-space:nowrap; padding-left:6px; }
+    .m { color:#444; font-size:10px; }
+    .row { display:flex; justify-content:space-between; font-size:12px; padding:1px 0; }
+    .total { font-size:15px; font-weight:800; padding:4px 0; border-top:1px dashed #000; border-bottom:1px dashed #000; margin-top:4px; }
+    .foot { margin-top:10px; text-align:center; font-size:11px; }
+  </style></head><body>
+    <div class="c">
+      <h1>TOKYOHALAL</h1>
+      <div class="muted">POS Sale Receipt</div>
     </div>
-  );
+    <hr/>
+    <div class="row"><span>Date</span><span>${dt}</span></div>
+    <div class="row"><span>Sale</span><span>#${r.id.slice(0, 8).toUpperCase()}</span></div>
+    <div class="row"><span>Customer</span><span>${escapeHtml(r.customer)}</span></div>
+    <div class="row"><span>Payment</span><span>${r.method.toUpperCase()}</span></div>
+    <hr/>
+    <table>${rows}</table>
+    <hr/>
+    <div class="row"><span>Subtotal</span><span>৳${r.subtotal.toFixed(2)}</span></div>
+    ${r.discount ? `<div class="row"><span>Discount</span><span>− ৳${r.discount.toFixed(2)}</span></div>` : ""}
+    ${r.tax ? `<div class="row"><span>Tax</span><span>+ ৳${r.tax.toFixed(2)}</span></div>` : ""}
+    <div class="row total"><span>TOTAL</span><span>৳${r.total.toFixed(2)}</span></div>
+    <div class="row"><span>Paid</span><span>৳${r.paid.toFixed(2)}</span></div>
+    <div class="row"><span>Change</span><span>৳${r.change.toFixed(2)}</span></div>
+    <div class="foot">
+      Thank you for your purchase!<br/>
+      Please come again.
+    </div>
+  </body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); setTimeout(() => win.close(), 300); }, 200);
 }
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+}
+

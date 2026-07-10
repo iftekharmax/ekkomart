@@ -650,61 +650,112 @@ function PosPage() {
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent container={portalContainer} className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><History className="h-5 w-5 text-primary" /> Today's sales</DialogTitle>
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent container={portalContainer} className="gap-0 overflow-hidden p-0 sm:max-w-xl">
+          <DialogHeader className="border-b border-slate-200/70 bg-gradient-to-r from-primary/12 via-primary/5 to-transparent px-5 py-4 dark:border-slate-800">
+            <DialogTitle className="flex items-center gap-3">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-md shadow-primary/25">
+                <History className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="flex flex-col">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary/70">Sales report</span>
+                <span className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">Today’s sales</span>
+              </span>
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 text-sm">
-            <Input
-              value={historySearch}
-              onChange={(e) => setHistorySearch(e.target.value)}
-              placeholder="Search by customer…"
-              className="h-9"
-            />
+
+          <div className="space-y-4 p-5">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+              <Input
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Escape") setHistorySearch(""); }}
+                placeholder="Search by customer…"
+                aria-label="Search today's sales by customer"
+                className="h-11 rounded-xl border-slate-200 pl-9 text-sm font-medium focus-visible:ring-4 focus-visible:ring-primary/15 dark:border-slate-700"
+              />
+            </div>
+
             {historyQ.isLoading ? (
-              <div className="py-6 text-center text-slate-500">Loading…</div>
+              <div className="space-y-2" aria-busy="true" aria-live="polite">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-xl border border-slate-200/70 bg-white p-3 dark:border-slate-800 dark:bg-slate-950">
+                    <div className="h-8 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 w-2/3 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-2.5 w-1/3 animate-pulse rounded bg-slate-100 dark:bg-slate-900" />
+                    </div>
+                    <div className="h-5 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />
+                  </div>
+                ))}
+              </div>
+            ) : historyQ.isError ? (
+              <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-rose-200 bg-rose-50/50 py-8 text-center dark:border-rose-900/50 dark:bg-rose-950/20">
+                <div className="text-sm font-semibold text-rose-700 dark:text-rose-300">Couldn’t load sales</div>
+                <div className="text-xs text-rose-600/80 dark:text-rose-400/80">Check your connection and try again.</div>
+                <Button size="sm" variant="outline" onClick={() => historyQ.refetch()} className="mt-1">Retry</Button>
+              </div>
             ) : filteredHistoryRows.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-                <History className="h-10 w-10 text-slate-300" />
-                <div className="font-medium text-slate-600 dark:text-slate-300">
+              <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 py-10 text-center dark:border-slate-800 dark:bg-slate-950/40">
+                <div className="grid h-12 w-12 place-items-center rounded-2xl bg-slate-100 dark:bg-slate-800">
+                  <History className="h-6 w-6 text-slate-400" aria-hidden="true" />
+                </div>
+                <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                   {(historyQ.data?.rows ?? []).length === 0 ? "No sales yet today" : "No matching customers"}
                 </div>
-                <div className="text-xs text-slate-400">
+                <div className="text-xs text-muted-foreground">
                   {(historyQ.data?.rows ?? []).length === 0 ? "Completed sales will appear here." : "Try a different search."}
                 </div>
               </div>
             ) : (
-              <div className="max-h-[50vh] overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-900">
+              <div className="max-h-[46vh] overflow-auto rounded-2xl border border-slate-200/70 bg-white dark:border-slate-800 dark:bg-slate-950">
+                <table className="w-full text-xs tabular-nums">
+                  <thead className="sticky top-0 z-10 bg-slate-50/95 text-[10px] font-semibold uppercase tracking-wider text-slate-500 backdrop-blur dark:bg-slate-900/95">
                     <tr>
-                      <th className="px-3 py-2 text-left">Time</th>
-                      <th className="px-3 py-2 text-left">Customer</th>
-                      <th className="px-3 py-2 text-right">Items</th>
-                      <th className="px-3 py-2 text-right">Qty</th>
-                      <th className="px-3 py-2 text-right">Total</th>
+                      <th scope="col" className="px-3 py-2.5 text-left">Time</th>
+                      <th scope="col" className="px-3 py-2.5 text-left">Customer</th>
+                      <th scope="col" className="px-3 py-2.5 text-right">Items</th>
+                      <th scope="col" className="px-3 py-2.5 text-right">Qty</th>
+                      <th scope="col" className="px-3 py-2.5 text-right">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredHistoryRows.map((r) => (
-                      <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800 align-top">
-                        <td className="px-3 py-2 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
-                        <td className="px-3 py-2">{r.customer || "—"}</td>
-                        <td className="px-3 py-2 text-right">{r.items.length}</td>
-                        <td className="px-3 py-2 text-right font-medium">{r.quantity}</td>
-                        <td className="px-3 py-2 text-right font-semibold">{money(r.total)}</td>
+                      <tr key={r.id} className="border-t border-slate-100 transition hover:bg-primary/[0.03] dark:border-slate-800/70">
+                        <td className="whitespace-nowrap px-3 py-2.5 font-medium text-slate-600 dark:text-slate-300">
+                          {new Date(r.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </td>
+                        <td className="px-3 py-2.5 text-slate-800 dark:text-slate-100">{r.customer || <span className="text-slate-400">—</span>}</td>
+                        <td className="px-3 py-2.5 text-right">
+                          <span className="inline-flex min-w-[1.75rem] justify-center rounded-md bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{r.items.length}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-semibold text-slate-700 dark:text-slate-200">{r.quantity}</td>
+                        <td className="px-3 py-2.5 text-right font-bold text-primary">{money(r.total)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             )}
-            <div className="flex items-center justify-between rounded-lg bg-slate-50 p-3 dark:bg-slate-950">
-              <span className="text-slate-500">Sales: <b className="text-slate-900 dark:text-slate-100">{historyQ.data?.count ?? 0}</b></span>
-              <span className="text-base font-black text-primary">{money(historyQ.data?.total ?? 0)}</span>
+
+            <div className="flex items-center justify-between rounded-2xl border border-slate-200/70 bg-gradient-to-br from-slate-50 to-white p-4 dark:border-slate-800 dark:from-slate-950 dark:to-slate-900">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Sales</span>
+                <span className="text-lg font-bold tabular-nums text-slate-900 dark:text-slate-100">{historyQ.data?.count ?? 0}</span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total revenue</span>
+                <span className="text-2xl font-bold tracking-tight tabular-nums text-primary">{money(historyQ.data?.total ?? 0)}</span>
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => historyQ.refetch()}>Refresh</Button>
-            <Button onClick={() => setHistoryOpen(false)}>Close</Button>
+
+          <DialogFooter className="gap-2 border-t border-slate-200/70 bg-slate-50/50 p-4 dark:border-slate-800 dark:bg-slate-950/30">
+            <Button variant="outline" onClick={() => historyQ.refetch()} disabled={historyQ.isFetching} className="rounded-lg">
+              {historyQ.isFetching ? "Refreshing…" : "Refresh"}
+            </Button>
+            <Button onClick={() => setHistoryOpen(false)} className="rounded-lg">Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

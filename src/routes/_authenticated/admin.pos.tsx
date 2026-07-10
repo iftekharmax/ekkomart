@@ -422,7 +422,7 @@ function PosPage() {
               onFocus={() => setOpen(true)}
               onBlur={() => setTimeout(() => setOpen(false), 150)}
               placeholder="Scan barcode or start typing…"
-              className="h-14 rounded-xl border-2 border-primary/20 pl-12 pr-4 text-base font-medium shadow-sm focus-visible:border-primary focus-visible:ring-primary/20"
+              className="h-14 rounded-2xl border-2 border-primary/15 bg-white pl-12 pr-4 text-[15px] font-medium tracking-tight shadow-sm placeholder:font-normal placeholder:text-slate-400 focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15 dark:bg-slate-950"
             />
             {open && q.trim().length > 0 && (
               <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">

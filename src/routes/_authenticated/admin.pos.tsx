@@ -466,8 +466,8 @@ function PosPage() {
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="mb-3 grid grid-cols-2 gap-2">
-            <label className="text-xs text-slate-500">Customer
-              <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Walk-in" className="mt-1 h-9" />
+            <label className="text-xs text-slate-500">Mobile number
+              <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="01XXXXXXXXX" inputMode="tel" className="mt-1 h-9" />
             </label>
             <label className="text-xs text-slate-500">Method
               <Select value={method} onValueChange={(v) => setMethod(v as any)}>
@@ -484,14 +484,20 @@ function PosPage() {
               <Input type="number" min={0} value={discount} onChange={(e) => setDiscount(Math.max(0, Number(e.target.value) || 0))} className="mt-1 h-9" />
             </label>
             <label className="text-xs text-slate-500">Tax
-              <Input type="number" min={0} value={tax} onChange={(e) => setTax(Math.max(0, Number(e.target.value) || 0))} className="mt-1 h-9" />
+              <Select value={taxMode} onValueChange={(v) => setTaxMode(v as "default" | "free")}>
+                <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Default (8%)</SelectItem>
+                  <SelectItem value="free">Tax free</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
           </div>
 
           <div className="space-y-1 rounded-xl bg-slate-50 p-3 text-sm dark:bg-slate-950">
             <Row label="Subtotal" value={money(subtotal)} />
             <Row label="Discount" value={`− ${money(discount)}`} />
-            <Row label="Tax" value={`+ ${money(tax)}`} />
+            <Row label={taxMode === "default" ? "Tax (8%)" : "Tax (free)"} value={`+ ${money(tax)}`} />
             <div className="my-1 border-t border-dashed border-slate-200 dark:border-slate-800" />
             <Row label={<span className="font-bold text-slate-900 dark:text-slate-100">Total</span>} value={<span className="text-lg font-black text-primary">{money(total)}</span>} />
           </div>

@@ -48,8 +48,11 @@ function SalesPage() {
   const [confirmSale, setConfirmSale] = useState<{ id: string; invoice: string } | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
 
-  const setSearch = (patch: Partial<{ q: string; from: string; to: string; page: number }>) =>
-    nav({ to: ".", search: { q, from, to, page, ...patch, page: patch.page ?? 1 } });
+  const setSearch = (patch: Partial<{ q: string; from: string; to: string; page: number }>) => {
+    const next = { q, from, to, page, ...patch };
+    if (!("page" in patch)) next.page = 1;
+    nav({ to: ".", search: next });
+  };
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-sales"],

@@ -155,13 +155,22 @@ export const createPosSale = createServerFn({ method: "POST" })
       throw new Error(iErr.message);
     }
 
-    // Decrement stock per product (no variation support in POS v1).
+    // Decrement stock — variation stock if provided, else product stock.
     for (const it of data.items) {
-      const { data: p } = await context.supabase.from("products").select("stock").eq("id", it.product_id).maybeSingle();
-      const cur = Number((p as any)?.stock ?? 0);
-      const next = cur - it.qty;
-      await context.supabase.from("products").update({ stock: next, in_stock: next > 0 } as any).eq("id", it.product_id);
+      if (it.variation_id) {
+        const { data: v } = await (context.supabase.from("product_variations" as any) as any)
+          .select("stock").eq("id", it.variation_id).maybeSingle();
+        const cur = Number((v as any)?.stock ?? 0);
+        await (context.supabase.from("product_variations" as any) as any)
+          .update({ stock: cur - it.qty }).eq("id", it.variation_id);
+      } else {
+        const { data: p } = await context.supabase.from("products").select("stock").eq("id", it.product_id).maybeSingle();
+        const cur = Number((p as any)?.stock ?? 0);
+        const next = cur - it.qty;
+        await context.supabase.from("products").update({ stock: next, in_stock: next > 0 } as any).eq("id", it.product_id);
+      }
     }
+
 
     return { id: order.id, total };
   });

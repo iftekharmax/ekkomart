@@ -136,15 +136,19 @@ export const payPurchaseDue = createServerFn({ method: "POST" })
     const { data: row, error } = await (context.supabase.from("purchases" as any) as any)
       .select("total,paid").eq("id", data.id).single();
     if (error) throw new Error(error.message);
+    const { data: rets } = await (context.supabase.from("purchase_returns" as any) as any)
+      .select("total").eq("purchase_id", data.id);
+    const returnedTotal = (rets ?? []).reduce((s: number, r: any) => s + Number(r.total ?? 0), 0);
     const total = Number(row.total);
     const paid = Number(row.paid ?? 0);
-    const due = Math.max(0, total - paid);
+    const due = Math.max(0, total - returnedTotal - paid);
     if (data.amount > due + 0.0001) throw new Error(`Payment exceeds due ($${due.toFixed(2)})`);
     const newPaid = paid + data.amount;
     const { error: e2 } = await (context.supabase.from("purchases" as any) as any)
       .update({ paid: newPaid } as any).eq("id", data.id);
     if (e2) throw new Error(e2.message);
     const { error: e3 } = await (context.supabase.from("purchase_payments" as any) as any).insert({
+
       purchase_id: data.id,
       amount: data.amount,
       receipt_no: data.receipt_no?.trim() || null,

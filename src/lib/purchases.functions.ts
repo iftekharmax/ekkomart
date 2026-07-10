@@ -76,7 +76,10 @@ export const getPurchase = createServerFn({ method: "GET" })
       .select("*, product:products(id,name,unit,product_type), variation:product_variations(id,name)")
       .eq("purchase_id", data.id);
     if (e2) throw new Error(e2.message);
-    return { header, items: items ?? [] };
+    const { data: payments, error: e3 } = await (context.supabase.from("purchase_payments" as any) as any)
+      .select("*").eq("purchase_id", data.id).order("paid_at", { ascending: false });
+    if (e3) throw new Error(e3.message);
+    return { header, items: items ?? [], payments: payments ?? [] };
   });
 
 export const createPurchase = createServerFn({ method: "POST" })

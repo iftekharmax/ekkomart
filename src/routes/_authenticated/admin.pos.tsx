@@ -57,6 +57,7 @@ function PosPage() {
   const [draftsOpen, setDraftsOpen] = useState(false);
   const [calcOpen, setCalcOpen] = useState(false);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  const [selectedCartId, setSelectedCartId] = useState<string | null>(null);
   const [notFound, setNotFound] = useState<null | { code: string }>(null);
   const [quickName, setQuickName] = useState("");
   const [quickPrice, setQuickPrice] = useState<number>(0);
@@ -65,8 +66,29 @@ function PosPage() {
   const lastKeyTimeRef = useRef<number>(0);
   const bufferRef = useRef<string>("");
   const justAddedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hydratedRef = useRef(false);
 
-  useEffect(() => { searchRef.current?.focus(); }, []);
+  // Restore auto-saved cart once on mount
+  useEffect(() => {
+    const auto = loadAutosave();
+    if (auto && auto.cart.length > 0) {
+      setCart(auto.cart.map((c) => ({ ...c, price: Number(c.price), qty: Number(c.qty) })));
+      setCustomer(auto.customer ?? "");
+      setDiscount(Number(auto.discount) || 0);
+      setTax(Number(auto.tax) || 0);
+      setMethod(auto.method ?? "cash");
+      toast.message("Restored unsaved cart");
+    }
+    hydratedRef.current = true;
+    searchRef.current?.focus();
+  }, []);
+
+  // Auto-save cart whenever it changes
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (cart.length === 0) { clearAutosave(); return; }
+    persistAutosave({ cart, customer, discount, tax, method });
+  }, [cart, customer, discount, tax, method]);
 
   const subtotal = useMemo(() => cart.reduce((s, it) => s + it.price * it.qty, 0), [cart]);
   const total = Math.max(0, subtotal - discount + tax);

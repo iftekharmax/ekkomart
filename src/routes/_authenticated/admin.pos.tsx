@@ -244,7 +244,12 @@ function PosPage() {
                 {isFetching && suggestions.length === 0 ? (
                   <div className="p-4 text-sm text-slate-500">Searching…</div>
                 ) : suggestions.length === 0 ? (
-                  <div className="p-4 text-sm text-slate-500">No products found for "{q}"</div>
+                  <div className="p-4">
+                    <div className="mb-2 text-sm text-slate-600 dark:text-slate-300">No products found for <b>"{q}"</b></div>
+                    <Button size="sm" type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => openNotFound(q.trim())}>
+                      <Plus className="mr-1 h-4 w-4" /> Add "{q}" manually
+                    </Button>
+                  </div>
                 ) : (
                   <ul className="max-h-80 overflow-y-auto">
                     {suggestions.map((p, i) => {

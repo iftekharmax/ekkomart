@@ -125,7 +125,8 @@ function PurchaseDetail() {
         {(payments ?? []).length === 0 ? (
           <div className="px-4 py-6 text-sm text-muted-foreground">No payments recorded yet.</div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[520px] text-sm">
             <thead className="bg-muted/20 text-left">
               <tr>
                 <th className="px-4 py-2 font-semibold">Date</th>

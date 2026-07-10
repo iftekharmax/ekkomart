@@ -137,24 +137,30 @@ function PosPage() {
 
   function addToCart(p: Product) {
     let ok = true;
+    const label = p.variation_id ? p.name : p.name;
     setCart((prev) => {
       const idx = prev.findIndex((i) => i.id === p.id);
       if (idx >= 0) {
         const copy = [...prev];
         const next = copy[idx].qty + 1;
         if (p.stock != null && next > p.stock) {
-          toast.error(`Only ${p.stock} in stock`); ok = false; return prev;
+          toast.error(`Insufficient stock for “${label}”`, { description: `Only ${p.stock} available` });
+          ok = false; return prev;
         }
         copy[idx] = { ...copy[idx], qty: next };
         return copy;
       }
-      if (p.stock != null && p.stock <= 0) { toast.error("Out of stock"); ok = false; return prev; }
+      if (p.stock != null && p.stock <= 0) {
+        toast.error(`“${label}” is out of stock`);
+        ok = false; return prev;
+      }
       return [...prev, { ...p, qty: 1 }];
     });
     if (ok) {
-      toast.success(`Added: ${p.name}`, { duration: 1200 });
+      toast.success(`Added: ${label}`, { duration: 1200 });
     }
   }
+
   function setQty(id: string, qty: number) {
     setCart((prev) => prev.flatMap((it) => {
       if (it.id !== id) return [it];

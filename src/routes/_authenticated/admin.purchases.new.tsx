@@ -111,6 +111,7 @@ function NewPurchasePage() {
     mutationFn: () => createFn({ data: {
       supplier_id: supplierId || null,
       purchase_date: date, note: note || null,
+      reference: reference.trim() || null,
       discount, tax, shipping, paid, status: "received",
       items: items.filter((i) => i.product_id && i.quantity > 0).map((i) => ({
         product_id: i.product_id, variation_id: i.variation_id || null,

@@ -542,7 +542,7 @@ function PosPage() {
             <label className="text-xs text-slate-500">Method
               <Select value={method} onValueChange={(v) => setMethod(v as any)}>
                 <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent container={portalContainer}>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="card">Card</SelectItem>
                   <SelectItem value="mobile">Mobile</SelectItem>

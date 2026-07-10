@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { posSearchProducts, createPosSale, createPosQuickProduct } from "@/lib/pos.functions";
+import { posSearchProducts, createPosSale, createPosQuickProduct, listPosTodaySales } from "@/lib/pos.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Minus, Plus, Trash2, Search, ScanLine, ShoppingCart, Wallet, X,
-  Calculator as CalcIcon, Save, FileText, Delete, Maximize2, Minimize2,
+  Calculator as CalcIcon, Save, FileText, Delete, Maximize2, Minimize2, History,
 } from "lucide-react";
 import { toast } from "sonner";
 

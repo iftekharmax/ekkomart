@@ -409,10 +409,8 @@ function PosPage() {
                     {justAddedId === it.id && (
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
                     )}
-                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
-                      {it.img ? <img src={it.img} alt="" className="h-full w-full object-cover" /> : (
-                        <div className="grid h-full place-items-center text-slate-300"><Package className="h-5 w-5" /></div>
-                      )}
+                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                      <Package className="h-5 w-5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-semibold">{it.name}</div>

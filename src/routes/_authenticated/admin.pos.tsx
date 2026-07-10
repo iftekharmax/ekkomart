@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { posSearchProducts, createPosSale, createPosQuickProduct } from "@/lib/pos.functions";
+import { posSearchProducts, createPosSale, createPosQuickProduct, listPosTodaySales } from "@/lib/pos.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Minus, Plus, Trash2, Search, ScanLine, ShoppingCart, Wallet, X,
-  Calculator as CalcIcon, Save, FileText, Delete, Maximize2, Minimize2,
+  Calculator as CalcIcon, Save, FileText, Delete, Maximize2, Minimize2, History,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,6 +47,13 @@ function PosPage() {
   const searchFn = useServerFn(posSearchProducts);
   const saleFn = useServerFn(createPosSale);
   const quickAddFn = useServerFn(createPosQuickProduct);
+  const historyFn = useServerFn(listPosTodaySales);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyQ = useQuery({
+    queryKey: ["pos-today-sales"],
+    queryFn: () => historyFn({}) as Promise<{ rows: { id: string; total: number; created_at: string; payment_method: string; customer: string | null }[]; total: number; count: number }>,
+    enabled: historyOpen,
+  });
 
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -527,6 +534,9 @@ function PosPage() {
             <Button type="button" variant="outline" size="sm" onClick={() => setDraftsOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Open saved drafts">
               <FileText className="h-3.5 w-3.5" /> {drafts.length}
             </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Today's sales history">
+              <History className="h-3.5 w-3.5" />
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={() => setCalcOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Calculator">
               <CalcIcon className="h-3.5 w-3.5" />
             </Button>
@@ -620,6 +630,52 @@ function PosPage() {
         container={portalContainer}
       />
 
+
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent container={portalContainer} className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><History className="h-5 w-5 text-primary" /> Today's sales</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            {historyQ.isLoading ? (
+              <div className="py-6 text-center text-slate-500">Loading…</div>
+            ) : (historyQ.data?.rows ?? []).length === 0 ? (
+              <div className="py-6 text-center text-slate-500">No sales yet today.</div>
+            ) : (
+              <div className="max-h-[50vh] overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-slate-50 text-slate-500 dark:bg-slate-900">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Time</th>
+                      <th className="px-3 py-2 text-left">Order</th>
+                      <th className="px-3 py-2 text-left">Method</th>
+                      <th className="px-3 py-2 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historyQ.data!.rows.map((r) => (
+                      <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
+                        <td className="px-3 py-2">{new Date(r.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                        <td className="px-3 py-2 font-mono text-[11px]">{r.id.slice(0, 8)}</td>
+                        <td className="px-3 py-2 capitalize">{r.payment_method}</td>
+                        <td className="px-3 py-2 text-right font-semibold">{money(r.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="flex items-center justify-between rounded-lg bg-slate-50 p-3 dark:bg-slate-950">
+              <span className="text-slate-500">Sales: <b className="text-slate-900 dark:text-slate-100">{historyQ.data?.count ?? 0}</b></span>
+              <span className="text-base font-black text-primary">{money(historyQ.data?.total ?? 0)}</span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => historyQ.refetch()}>Refresh</Button>
+            <Button onClick={() => setHistoryOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!notFound} onOpenChange={(o) => !o && setNotFound(null)}>
         <DialogContent container={portalContainer} className="sm:max-w-md">

@@ -113,3 +113,31 @@ export const createPosSale = createServerFn({ method: "POST" })
 
     return { id: order.id, total };
   });
+
+export const listPosTodaySales = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    const { data, error } = await context.supabase
+      .from("orders")
+      .select("id,total,note,created_at")
+      .eq("user_id", context.userId)
+      .gte("created_at", start.toISOString())
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []).filter((o: any) => {
+      try { return JSON.parse(o.note ?? "{}")?.pos === true; } catch { return false; }
+    }).map((o: any) => {
+      let meta: any = {};
+      try { meta = JSON.parse(o.note ?? "{}"); } catch {}
+      return {
+        id: o.id as string,
+        total: Number(o.total) || 0,
+        created_at: o.created_at as string,
+        payment_method: (meta.payment_method as string) ?? "cash",
+        customer: (meta.customer as string) ?? null,
+      };
+    });
+    const total = rows.reduce((s, r) => s + r.total, 0);
+    return { rows, total, count: rows.length };
+  });

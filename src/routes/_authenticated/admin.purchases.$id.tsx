@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Trash2, DollarSign } from "lucide-react";
+import { ArrowLeft, Trash2, DollarSign, Plus, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -50,8 +50,21 @@ function PurchaseDetail() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  if (isLoading) return <div className="text-muted-foreground">Loading…</div>;
-  if (!data) return <div className="text-muted-foreground">Not found.</div>;
+  if (isLoading) return (
+    <div className="space-y-4">
+      <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+      <div className="h-4 w-64 animate-pulse rounded bg-muted" />
+      <div className="h-40 animate-pulse rounded-xl bg-muted" />
+    </div>
+  );
+  if (!data) return (
+    <div className="rounded-xl border bg-card p-10 text-center">
+      <p className="text-sm text-muted-foreground">Purchase not found. It may have been deleted.</p>
+      <Button className="mt-4" size="sm" variant="outline" onClick={() => navigate({ to: "/admin/purchases" })}>
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back to purchases
+      </Button>
+    </div>
+  );
   const { header, items, payments } = data as any;
   const due = Math.max(0, Number(header.total) - Number(header.paid));
   const status = due <= 0 ? "Paid" : Number(header.paid) > 0 ? "Partial" : "Unpaid";
@@ -123,7 +136,17 @@ function PurchaseDetail() {
       <div className="mt-6 overflow-hidden rounded-xl border bg-card">
         <div className="border-b bg-muted/40 px-4 py-3 text-sm font-semibold">Payment history</div>
         {(payments ?? []).length === 0 ? (
-          <div className="px-4 py-6 text-sm text-muted-foreground">No payments recorded yet.</div>
+          <div className="flex flex-col items-center gap-3 px-4 py-10 text-center">
+            <div className="grid h-12 w-12 place-items-center rounded-full bg-muted">
+              <Receipt className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground">No payments recorded yet.</p>
+            {due > 0 && (
+              <Button size="sm" onClick={() => { setPayAmount(due); setPayOpen(true); }}>
+                <DollarSign className="mr-2 h-4 w-4" /> Record first payment
+              </Button>
+            )}
+          </div>
         ) : (
           <div className="overflow-x-auto">
           <table className="w-full min-w-[520px] text-sm">

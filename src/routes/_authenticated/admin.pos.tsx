@@ -67,6 +67,7 @@ function PosPage() {
   const bufferRef = useRef<string>("");
   const justAddedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hydratedRef = useRef(false);
+  const saveDraftRef = useRef<() => void>(() => {});
 
   // Restore auto-saved cart once on mount
   useEffect(() => {

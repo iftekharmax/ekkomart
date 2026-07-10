@@ -161,10 +161,14 @@ function PurchasesPage() {
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">Loading…</td></tr>
+              Array.from({ length: 4 }).map((_, i) => (
+                <tr key={i} className="border-t"><td colSpan={9} className="px-4 py-3"><div className="h-6 animate-pulse rounded bg-muted" /></td></tr>
+              ))
             ) : (rows as any[]).length === 0 ? (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">No purchases yet.</td></tr>
-            ) : (rows as any[]).map((p) => {
+              <tr><td colSpan={9} className="px-4 py-12"><EmptyState onNew={() => navigate({ to: "/admin/purchases/new" })} /></td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={9} className="px-4 py-12"><NoResults onClear={clearFilters} /></td></tr>
+            ) : filtered.map((p) => {
               const due = Math.max(0, Number(p.total) - Number(p.paid ?? 0));
               const items = (p.items ?? []) as any[];
               const totalQty = items.reduce((s, it) => s + Number(it.quantity ?? 0), 0);

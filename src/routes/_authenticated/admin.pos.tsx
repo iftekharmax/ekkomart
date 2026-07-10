@@ -390,7 +390,19 @@ function PosPage() {
               <div className="text-[11px] text-slate-500">Review & complete sale</div>
             </div>
           </div>
+          <div className="flex items-center gap-1">
+            <Button type="button" variant="outline" size="sm" onClick={saveDraft} className="h-8 gap-1 px-2 text-xs" title="Save current cart as draft">
+              <Save className="h-3.5 w-3.5" /> Draft
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setDraftsOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Open saved drafts">
+              <FileText className="h-3.5 w-3.5" /> {drafts.length}
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setCalcOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Calculator">
+              <CalcIcon className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </header>
+
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="mb-3 grid grid-cols-2 gap-2">

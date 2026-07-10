@@ -534,6 +534,9 @@ function PosPage() {
             <Button type="button" variant="outline" size="sm" onClick={() => setDraftsOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Open saved drafts">
               <FileText className="h-3.5 w-3.5" /> {drafts.length}
             </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => setHistoryOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Today's sales history">
+              <History className="h-3.5 w-3.5" />
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={() => setCalcOpen(true)} className="h-8 gap-1 px-2 text-xs" title="Calculator">
               <CalcIcon className="h-3.5 w-3.5" />
             </Button>

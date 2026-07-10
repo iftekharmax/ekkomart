@@ -216,34 +216,85 @@ function PurchaseDetail() {
             <span>Total</span><span>${Number(header.total).toFixed(2)}</span>
           </div>
           {returnedTotal > 0 && (
-            <Row label={`Returned (${(returns ?? []).length})`} value={`-$${returnedTotal.toFixed(2)}`} />
+            <Row label={`Returned (${activeReturns.length})`} value={`-$${returnedTotal.toFixed(2)}`} />
           )}
-          <Row label="Paid" value={`$${Number(header.paid).toFixed(2)}`} />
+          <Row label="Paid" value={`$${paidTotal.toFixed(2)}`} />
           <div className={`flex justify-between text-sm font-semibold ${due > 0 ? "text-destructive" : "text-green-600"}`}>
             <span>Payable to supplier</span><span>${due.toFixed(2)}</span>
           </div>
         </div>
       </div>
 
-      {(returns ?? []).length > 0 && (
-        <div className="mt-6 overflow-hidden rounded-xl border bg-card">
-          <div className="border-b bg-muted/40 px-4 py-3 text-sm font-semibold">
-            Returns ({(returns as any[]).length}) — deducted from supplier payable
+      {/* Breakdown: how returned/paid/remaining are derived */}
+      <div className="mt-6 overflow-hidden rounded-xl border bg-card">
+        <div className="border-b bg-muted/40 px-4 py-3 text-sm font-semibold">
+          Balance breakdown
+        </div>
+        <div className="grid gap-4 p-4 md:grid-cols-3">
+          <div>
+            <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
+              <span>Returns ({(returns ?? []).length})</span>
+              <span>-${returnedTotal.toFixed(2)}</span>
+            </div>
+            {(returns ?? []).length === 0 ? (
+              <p className="text-xs text-muted-foreground">No returns.</p>
+            ) : (
+              <ul className="space-y-1">
+                {(returns as any[]).map((r) => {
+                  const voided = r.status === "voided";
+                  return (
+                    <li key={r.id}>
+                      <Link to="/admin/purchase-returns/$id" params={{ id: r.id }}
+                        className={`flex items-center justify-between gap-2 rounded px-2 py-1 text-xs hover:bg-muted/40 ${voided ? "opacity-60 line-through" : ""}`}>
+                        <span className="min-w-0 truncate">
+                          <span className="font-mono">{r.reference}</span>
+                          <span className="text-muted-foreground"> · {r.return_date}</span>
+                        </span>
+                        <span className={`shrink-0 font-semibold ${voided ? "text-muted-foreground" : "text-destructive"}`}>
+                          {voided ? "voided" : `-$${Number(r.total).toFixed(2)}`}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
-          <div className="divide-y">
-            {(returns as any[]).map((r) => (
-              <Link key={r.id} to="/admin/purchase-returns/$id" params={{ id: r.id }}
-                className="flex items-center justify-between gap-3 px-4 py-3 text-sm hover:bg-muted/30">
-                <div className="min-w-0">
-                  <div className="font-mono text-xs text-muted-foreground">{r.reference}</div>
-                  <div className="truncate">{r.return_date}{r.reason ? ` · ${r.reason}` : ""}</div>
-                </div>
-                <div className="shrink-0 font-semibold text-destructive">-${Number(r.total).toFixed(2)}</div>
-              </Link>
-            ))}
+          <div>
+            <div className="mb-2 flex items-center justify-between text-xs uppercase tracking-wide text-muted-foreground">
+              <span>Payments ({(payments ?? []).length})</span>
+              <span>${paidTotal.toFixed(2)}</span>
+            </div>
+            {(payments ?? []).length === 0 ? (
+              <p className="text-xs text-muted-foreground">No payments.</p>
+            ) : (
+              <ul className="space-y-1">
+                {(payments as any[]).map((p) => (
+                  <li key={p.id} className="flex items-center justify-between gap-2 px-2 py-1 text-xs">
+                    <span className="min-w-0 truncate text-muted-foreground">
+                      {new Date(p.paid_at).toLocaleDateString()}{p.receipt_no ? ` · #${p.receipt_no}` : ""}
+                    </span>
+                    <span className="shrink-0 font-semibold">${Number(p.amount).toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+          <div className="rounded-lg bg-muted/40 p-3 text-xs">
+            <div className="mb-2 font-semibold uppercase tracking-wide text-muted-foreground">Remaining</div>
+            <div className="space-y-1 font-mono">
+              <div className="flex justify-between"><span>Total</span><span>${total.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span>− Returned</span><span>${returnedTotal.toFixed(2)}</span></div>
+              <div className="flex justify-between"><span>− Paid</span><span>${paidTotal.toFixed(2)}</span></div>
+              <div className={`flex justify-between border-t pt-1 font-bold ${due > 0 ? "text-destructive" : "text-green-600"}`}>
+                <span>= Due</span><span>${due.toFixed(2)}</span>
+              </div>
+            </div>
           </div>
         </div>
-      )}
+      </div>
+
+
 
 
       {header.note && (

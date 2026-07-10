@@ -648,9 +648,6 @@ function PosPage() {
 
 
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
-        <DialogContent container={portalContainer} className="sm:max-w-lg">
-          <DialogHeader>
-      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent container={portalContainer} className="gap-0 overflow-hidden p-0 sm:max-w-xl">
           <DialogHeader className="border-b border-slate-200/70 bg-gradient-to-r from-primary/12 via-primary/5 to-transparent px-5 py-4 dark:border-slate-800">
             <DialogTitle className="flex items-center gap-3">

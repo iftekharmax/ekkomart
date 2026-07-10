@@ -113,6 +113,26 @@ export const createPurchase = createServerFn({ method: "POST" })
     return row;
   });
 
+export const payPurchaseDue = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; amount: number }) =>
+    z.object({ id: z.string().uuid(), amount: z.number().positive() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: row, error } = await (context.supabase.from("purchases" as any) as any)
+      .select("total,paid").eq("id", data.id).single();
+    if (error) throw new Error(error.message);
+    const total = Number(row.total);
+    const paid = Number(row.paid ?? 0);
+    const due = Math.max(0, total - paid);
+    if (data.amount > due + 0.0001) throw new Error(`Payment exceeds due ($${due.toFixed(2)})`);
+    const newPaid = paid + data.amount;
+    const { error: e2 } = await (context.supabase.from("purchases" as any) as any)
+      .update({ paid: newPaid } as any).eq("id", data.id);
+    if (e2) throw new Error(e2.message);
+    return { ok: true, paid: newPaid };
+  });
+
 export const deletePurchase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))

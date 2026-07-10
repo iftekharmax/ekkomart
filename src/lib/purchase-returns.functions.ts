@@ -68,11 +68,18 @@ export const createPurchaseReturn = createServerFn({ method: "POST" })
   .inputValidator((d: z.infer<typeof returnInput>) => returnInput.parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    // Auto-fill supplier from selected purchase when omitted.
+    let supplierId = data.supplier_id ?? null;
+    if (data.purchase_id) {
+      const { data: p } = await (context.supabase.from("purchases" as any) as any)
+        .select("supplier_id").eq("id", data.purchase_id).single();
+      if (p?.supplier_id) supplierId = p.supplier_id;
+    }
     const subtotal = data.items.reduce((s, i) => s + i.quantity * i.unit_cost, 0);
     const header = {
       reference: data.reference?.trim() ? data.reference.trim() : makeReference(),
       purchase_id: data.purchase_id ?? null,
-      supplier_id: data.supplier_id ?? null,
+      supplier_id: supplierId,
       return_date: data.return_date ?? new Date().toISOString().slice(0, 10),
       reason: data.reason ?? null,
       subtotal,
@@ -97,6 +104,21 @@ export const createPurchaseReturn = createServerFn({ method: "POST" })
       throw new Error(e2.message);
     }
     return row;
+  });
+
+export const voidPurchaseReturn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: row, error: e0 } = await (context.supabase.from("purchase_returns" as any) as any)
+      .select("status").eq("id", data.id).single();
+    if (e0) throw new Error(e0.message);
+    if (row.status === "voided") return { ok: true };
+    const { error } = await (context.supabase.from("purchase_returns" as any) as any)
+      .update({ status: "voided" } as any).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const deletePurchaseReturn = createServerFn({ method: "POST" })

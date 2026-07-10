@@ -64,11 +64,12 @@ export const posSearchProducts = createServerFn({ method: "GET" })
             id: v.id,
             product_id: p.id,
             variation_id: v.id,
+            parent_name: p.name,
+            variation_name: v.name,
             name: `${p.name} - ${v.name}`,
             sku: v.sku ?? null,
             barcode: v.barcode ?? null,
             price: Number(v.price ?? p.price) || 0,
-
             stock: v.stock,
             img: v.image_url ?? p.img ?? null,
             unit: p.unit ?? null,
@@ -77,10 +78,12 @@ export const posSearchProducts = createServerFn({ method: "GET" })
       } else {
         out.push({
           id: p.id, product_id: p.id, variation_id: null,
+          parent_name: p.name, variation_name: null,
           name: p.name, sku: p.sku, barcode: p.barcode,
           price: Number(p.price) || 0, stock: p.stock, img: p.img, unit: p.unit,
         });
       }
+
     }
     return out.slice(0, data.limit);
   });

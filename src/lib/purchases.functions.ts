@@ -35,6 +35,7 @@ const itemInput = z.object({
 const purchaseInput = z.object({
   supplier_id: z.string().uuid().nullable().optional(),
   purchase_date: z.string().optional(),
+  reference: z.string().trim().max(100).nullable().optional(),
   note: z.string().nullable().optional(),
   discount: z.number().nonnegative().default(0),
   tax: z.number().nonnegative().default(0),

@@ -70,7 +70,7 @@ function PurchaseDetail() {
   const status = due <= 0 ? "Paid" : Number(header.paid) > 0 ? "Partial" : "Unpaid";
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-none">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <Link to="/admin/purchases" className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -94,7 +94,29 @@ function PurchaseDetail() {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border bg-card">
+      {/* Items — mobile cards */}
+      <div className="space-y-2 md:hidden">
+        {items.map((it: any) => (
+          <div key={it.id} className="rounded-xl border bg-card p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-semibold">{it.product?.name ?? "—"}</div>
+                {it.variation?.name && (
+                  <div className="text-xs text-muted-foreground">{it.variation.name}</div>
+                )}
+              </div>
+              <div className="shrink-0 text-right text-sm font-semibold">${Number(it.line_total).toFixed(2)}</div>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 border-t pt-2 text-xs">
+              <div><div className="text-muted-foreground">Qty</div><div className="font-semibold">{Number(it.quantity)}</div></div>
+              <div><div className="text-muted-foreground">Unit cost</div><div className="font-semibold">${Number(it.unit_cost).toFixed(2)}</div></div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Items — desktop table */}
+      <div className="hidden overflow-x-auto rounded-xl border bg-card md:block">
         <table className="w-full min-w-[600px] text-sm">
           <thead className="bg-muted/40 text-left">
             <tr>
@@ -119,6 +141,7 @@ function PurchaseDetail() {
         </table>
       </div>
 
+
       <div className="mt-6 grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="overflow-hidden rounded-xl border bg-card">
           <div className="border-b bg-muted/40 px-4 py-3 text-sm font-semibold">Payment history</div>
@@ -135,29 +158,48 @@ function PurchaseDetail() {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-sm">
-                <thead className="bg-muted/20 text-left">
-                  <tr>
-                    <th className="px-4 py-2 font-semibold">Date</th>
-                    <th className="px-4 py-2 font-semibold">Receipt #</th>
-                    <th className="px-4 py-2 font-semibold">Note</th>
-                    <th className="px-4 py-2 text-right font-semibold">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(payments as any[]).map((p) => (
-                    <tr key={p.id} className="border-t">
-                      <td className="px-4 py-2">{new Date(p.paid_at).toLocaleString()}</td>
-                      <td className="px-4 py-2 font-mono text-xs">{p.receipt_no ?? "—"}</td>
-                      <td className="px-4 py-2 text-muted-foreground">{p.note ?? "—"}</td>
-                      <td className="px-4 py-2 text-right font-semibold">${Number(p.amount).toFixed(2)}</td>
+            <>
+              {/* Mobile card list */}
+              <div className="space-y-2 p-3 sm:hidden">
+                {(payments as any[]).map((p) => (
+                  <div key={p.id} className="rounded-lg border bg-background p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs text-muted-foreground">{new Date(p.paid_at).toLocaleString()}</div>
+                        {p.receipt_no && <div className="mt-0.5 font-mono text-xs">#{p.receipt_no}</div>}
+                      </div>
+                      <div className="shrink-0 text-sm font-semibold">${Number(p.amount).toFixed(2)}</div>
+                    </div>
+                    {p.note && <p className="mt-2 border-t pt-2 text-xs text-muted-foreground">{p.note}</p>}
+                  </div>
+                ))}
+              </div>
+              {/* Desktop table with horizontal scroll fallback */}
+              <div className="hidden overflow-x-auto sm:block">
+                <table className="w-full min-w-[520px] text-sm">
+                  <thead className="bg-muted/20 text-left">
+                    <tr>
+                      <th className="px-4 py-2 font-semibold">Date</th>
+                      <th className="px-4 py-2 font-semibold">Receipt #</th>
+                      <th className="px-4 py-2 font-semibold">Note</th>
+                      <th className="px-4 py-2 text-right font-semibold">Amount</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {(payments as any[]).map((p) => (
+                      <tr key={p.id} className="border-t">
+                        <td className="px-4 py-2">{new Date(p.paid_at).toLocaleString()}</td>
+                        <td className="px-4 py-2 font-mono text-xs">{p.receipt_no ?? "—"}</td>
+                        <td className="px-4 py-2 text-muted-foreground">{p.note ?? "—"}</td>
+                        <td className="px-4 py-2 text-right font-semibold">${Number(p.amount).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
+
         </div>
 
         <div className="grid h-fit gap-3 rounded-xl border bg-card p-6">

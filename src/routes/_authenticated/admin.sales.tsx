@@ -49,7 +49,7 @@ function SalesPage() {
   const [viewId, setViewId] = useState<string | null>(null);
 
   const setSearch = (patch: Partial<{ q: string; from: string; to: string; page: number }>) =>
-    nav({ to: ".", search: (prev) => ({ ...prev, ...patch, page: patch.page ?? 1 }) });
+    nav({ to: ".", search: { q, from, to, page, ...patch, page: patch.page ?? 1 } });
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-sales"],

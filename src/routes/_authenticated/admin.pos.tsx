@@ -88,11 +88,15 @@ function PosPage() {
   const [activeIdx, setActiveIdx] = useState(0);
   useEffect(() => { const t = setTimeout(() => setDebouncedQ(q), 150); return () => clearTimeout(t); }, [q]);
 
-  const { data: suggestions = [], isFetching } = useQuery({
+  const { data: suggestions = [], isFetching, isError: suggestionsError, error: suggestionsErrorDetails, refetch: retrySuggestions } = useQuery({
     queryKey: ["pos-suggest", debouncedQ],
     queryFn: () => searchFn({ data: { q: debouncedQ, limit: 8 } }) as Promise<Product[]>,
     enabled: debouncedQ.trim().length > 0,
+    retry: false,
   });
+  useEffect(() => {
+    if (suggestionsError) toast.error("Product search failed", { description: (suggestionsErrorDetails as Error)?.message ?? "Try again." });
+  }, [suggestionsError, suggestionsErrorDetails]);
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [discount, setDiscount] = useState(0);
@@ -466,7 +470,14 @@ function PosPage() {
             />
             {open && q.trim().length > 0 && (
               <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-900">
-                {isFetching && suggestions.length === 0 ? (
+                {suggestionsError ? (
+                  <div className="flex items-center justify-between gap-3 p-4 text-sm text-rose-600">
+                    <span>Search failed. Please retry.</span>
+                    <Button size="sm" variant="outline" type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => retrySuggestions()}>
+                      Retry
+                    </Button>
+                  </div>
+                ) : isFetching && suggestions.length === 0 ? (
                   <div className="p-4 text-sm text-slate-500">Searching…</div>
                 ) : suggestions.length === 0 ? (
                   <div className="p-4">

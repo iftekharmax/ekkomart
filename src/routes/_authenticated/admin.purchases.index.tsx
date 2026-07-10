@@ -75,7 +75,6 @@ function PurchasesPage() {
                         <li key={it.id} className="text-xs">
                           {it.product?.name ?? "—"}
                           {it.variation?.name ? <span className="text-muted-foreground"> · {it.variation.name}</span> : null}
-                          <span className="text-muted-foreground"> × {Number(it.quantity)}</span>
                         </li>
                       ))}
                     </ul>

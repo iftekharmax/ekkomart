@@ -223,23 +223,31 @@ function PosPage() {
     mutationFn: async () => {
       if (cart.length === 0) throw new Error("Cart is empty");
       if (paid < total) throw new Error("Paid amount is less than total");
+      const items = cart.map((c) => ({
+        product_id: String(c.id),
+        name: String(c.name),
+        price: Number(c.price) || 0,
+        qty: Math.max(1, Math.floor(Number(c.qty) || 1)),
+        img: c.img ?? null,
+      }));
       const snapshot = {
-        items: cart.map((c) => ({ name: c.name, price: Number(c.price), qty: c.qty })),
-        subtotal, discount, tax, total, paid, change, method,
-        customer: customer || "Walk-in",
+        items: items.map((i) => ({ name: i.name, price: i.price, qty: i.qty })),
+        subtotal, discount: Number(discount) || 0, tax: Number(tax) || 0, total,
+        paid: Number(paid) || 0, change, method, customer: customer || "Walk-in",
       };
       const res = await saleFn({ data: {
-        items: cart.map((c) => ({ product_id: c.id, name: c.name, price: c.price, qty: c.qty, img: c.img })),
-        discount, tax, paid, payment_method: method, customer: customer || null,
+        items, discount: Number(discount) || 0, tax: Number(tax) || 0,
+        paid: Number(paid) || 0, payment_method: method, customer: customer || null,
       } });
       return { res: res as { id: string; total: number }, snapshot };
     },
     onSuccess: ({ res, snapshot }) => {
       printThermalReceipt({ id: res.id, ...snapshot });
       clearAll();
+      clearAutosave();
       toast.success(`Sale #${res.id.slice(0, 8).toUpperCase()} — ${money(res.total)}`);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message || "Sale failed"),
   });
 
   function saveDraft() {

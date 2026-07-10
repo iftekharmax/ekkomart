@@ -185,7 +185,7 @@ function SalesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {viewQ.data.items.map((it) => (
+                    {viewQ.data.items.map((it: any) => (
                       <tr key={it.id} className="border-t">
                         <td className="px-3 py-2">{it.name}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{money(it.price)}</td>

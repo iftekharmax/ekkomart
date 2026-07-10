@@ -275,7 +275,7 @@ function PosPage() {
     const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const extra = cart.length > 1 ? ` +${cart.length - 1}` : "";
     const name = `${first.name}${extra} · ${money(Number(first.price))} · ${time}`;
-    const d: Draft = { id: crypto.randomUUID(), at: Date.now(), name, cart, customer, discount, tax, method };
+    const d: Draft = { id: crypto.randomUUID(), at: Date.now(), name, cart, customer, discount, taxMode, method };
     const next = [d, ...drafts].slice(0, 20);
     setDrafts(next); persistDrafts(next);
     clearAll();
@@ -285,7 +285,7 @@ function PosPage() {
   function loadDraft(id: string) {
     const d = drafts.find((x) => x.id === id); if (!d) return;
     setCart(d.cart.map((c) => ({ ...c, price: Number(c.price), qty: Number(c.qty) })));
-    setCustomer(d.customer); setDiscount(Number(d.discount) || 0); setTax(Number(d.tax) || 0); setMethod(d.method);
+    setCustomer(d.customer); setDiscount(Number(d.discount) || 0); setTaxMode(d.taxMode ?? "default"); setMethod(d.method);
     setPaid(0);
     const next = drafts.filter((x) => x.id !== id);
     setDrafts(next); persistDrafts(next);

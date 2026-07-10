@@ -49,11 +49,18 @@ function PosPage() {
   const quickAddFn = useServerFn(createPosQuickProduct);
   const historyFn = useServerFn(listPosTodaySales);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historySearch, setHistorySearch] = useState("");
   const historyQ = useQuery({
     queryKey: ["pos-today-sales"],
     queryFn: () => historyFn({}) as Promise<{ rows: { id: string; total: number; created_at: string; payment_method: string; customer: string | null; items: { name: string; qty: number; price: number }[]; quantity: number }[]; total: number; count: number }>,
     enabled: historyOpen,
   });
+  const filteredHistoryRows = useMemo(() => {
+    const rows = historyQ.data?.rows ?? [];
+    const q = historySearch.trim().toLowerCase();
+    const filtered = q ? rows.filter((r) => (r.customer ?? "").toLowerCase().includes(q)) : rows.slice();
+    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [historyQ.data, historySearch]);
 
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -637,10 +644,24 @@ function PosPage() {
             <DialogTitle className="flex items-center gap-2"><History className="h-5 w-5 text-primary" /> Today's sales</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 text-sm">
+            <Input
+              value={historySearch}
+              onChange={(e) => setHistorySearch(e.target.value)}
+              placeholder="Search by customer…"
+              className="h-9"
+            />
             {historyQ.isLoading ? (
               <div className="py-6 text-center text-slate-500">Loading…</div>
-            ) : (historyQ.data?.rows ?? []).length === 0 ? (
-              <div className="py-6 text-center text-slate-500">No sales yet today.</div>
+            ) : filteredHistoryRows.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                <History className="h-10 w-10 text-slate-300" />
+                <div className="font-medium text-slate-600 dark:text-slate-300">
+                  {(historyQ.data?.rows ?? []).length === 0 ? "No sales yet today" : "No matching customers"}
+                </div>
+                <div className="text-xs text-slate-400">
+                  {(historyQ.data?.rows ?? []).length === 0 ? "Completed sales will appear here." : "Try a different search."}
+                </div>
+              </div>
             ) : (
               <div className="max-h-[50vh] overflow-auto rounded-lg border border-slate-200 dark:border-slate-800">
                 <table className="w-full text-xs">
@@ -648,25 +669,17 @@ function PosPage() {
                     <tr>
                       <th className="px-3 py-2 text-left">Time</th>
                       <th className="px-3 py-2 text-left">Customer</th>
-                      <th className="px-3 py-2 text-left">Items</th>
+                      <th className="px-3 py-2 text-right">Items</th>
                       <th className="px-3 py-2 text-right">Qty</th>
                       <th className="px-3 py-2 text-right">Total</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {historyQ.data!.rows.map((r) => (
+                    {filteredHistoryRows.map((r) => (
                       <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800 align-top">
                         <td className="px-3 py-2 whitespace-nowrap">{new Date(r.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
                         <td className="px-3 py-2">{r.customer || "—"}</td>
-                        <td className="px-3 py-2">
-                          <div className="space-y-0.5">
-                            {r.items.map((it, i) => (
-                              <div key={i} className="text-[11px] text-slate-600 dark:text-slate-300">
-                                {it.name} <span className="text-slate-400">× {it.qty}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </td>
+                        <td className="px-3 py-2 text-right">{r.items.length}</td>
                         <td className="px-3 py-2 text-right font-medium">{r.quantity}</td>
                         <td className="px-3 py-2 text-right font-semibold">{money(r.total)}</td>
                       </tr>

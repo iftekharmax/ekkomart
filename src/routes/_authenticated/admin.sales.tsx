@@ -363,9 +363,9 @@ function SalesPage() {
       <SaleDetailsDialog
         id={viewId}
         onClose={() => setViewId(null)}
-        onOpenFull={(id) => nav({ to: "/admin/sales/$id", params: { id } })}
         getFn={getFn}
       />
+
     </div>
   );
 }

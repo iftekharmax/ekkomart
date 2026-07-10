@@ -65,9 +65,11 @@ function PurchaseDetail() {
       </Button>
     </div>
   );
-  const { header, items, payments } = data as any;
-  const due = Math.max(0, Number(header.total) - Number(header.paid));
+  const { header, items, payments, returns } = data as any;
+  const returnedTotal = (returns ?? []).reduce((s: number, r: any) => s + Number(r.total ?? 0), 0);
+  const due = Math.max(0, Number(header.total) - returnedTotal - Number(header.paid));
   const status = due <= 0 ? "Paid" : Number(header.paid) > 0 ? "Partial" : "Unpaid";
+
 
   return (
     <div className="max-w-none">

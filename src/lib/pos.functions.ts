@@ -36,6 +36,28 @@ export const posSearchProducts = createServerFn({ method: "GET" })
     return rows ?? [];
   });
 
+const quickProductInput = z.object({
+  name: z.string().min(1),
+  price: z.number().nonnegative(),
+  stock: z.number().int().nonnegative().default(0),
+  barcode: z.string().optional().nullable(),
+  sku: z.string().optional().nullable(),
+});
+
+export const createPosQuickProduct = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: z.infer<typeof quickProductInput>) => quickProductInput.parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + "-" + Math.random().toString(36).slice(2, 7);
+    const { data: row, error } = await context.supabase.from("products").insert({
+      name: data.name, price: data.price, stock: data.stock, in_stock: data.stock > 0,
+      barcode: data.barcode || null, sku: data.sku || null, category: "POS", slug,
+    } as any).select("id,name,sku,barcode,price,stock,img,unit").single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
 const saleInput = z.object({
   items: z.array(z.object({
     product_id: z.string().uuid(),

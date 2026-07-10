@@ -379,7 +379,7 @@ function SaleDetailsDialog({
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <MetaCell label="Customer" value={data.customer || "Walk-in"} />
                 <MetaCell label="Payment" value={<span className="capitalize">{data.payment_method}</span>} />
-                <MetaCell label="Items" value={String(data.items.reduce((s, it) => s + it.qty, 0))} />
+                <MetaCell label="Items" value={String(data.items.reduce((s: number, it: { qty: number }) => s + it.qty, 0))} />
                 <MetaCell label="Status" value={<span className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${statusCls}`}>{status}</span>} />
               </div>
 

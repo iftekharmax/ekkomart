@@ -212,3 +212,33 @@ function PurchasesPage() {
     </div>
   );
 }
+
+function EmptyState({ onNew }: { onNew: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 text-center">
+      <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">
+        <ShoppingBag className="h-7 w-7 text-muted-foreground" />
+      </div>
+      <div>
+        <p className="font-semibold">No purchases yet</p>
+        <p className="text-sm text-muted-foreground">Record your first supplier purchase to update stock.</p>
+      </div>
+      <Button size="sm" onClick={onNew}><Plus className="mr-1 h-4 w-4" /> New purchase</Button>
+    </div>
+  );
+}
+
+function NoResults({ onClear }: { onClear: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 text-center">
+      <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">
+        <Search className="h-7 w-7 text-muted-foreground" />
+      </div>
+      <div>
+        <p className="font-semibold">No matching purchases</p>
+        <p className="text-sm text-muted-foreground">Try a different invoice number, supplier, or date range.</p>
+      </div>
+      <Button size="sm" variant="outline" onClick={onClear}><X className="mr-1 h-4 w-4" /> Clear filters</Button>
+    </div>
+  );
+}

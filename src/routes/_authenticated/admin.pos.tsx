@@ -697,7 +697,12 @@ function DraftsDialog({ open, onOpenChange, drafts, onLoad, onRemove }: {
 }
 
 // ============ Calculator ============
-function CalculatorDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+function CalculatorDialog({ open, onOpenChange, selectedItem, onApplyQty, onApplyDiscount }: {
+  open: boolean; onOpenChange: (o: boolean) => void;
+  selectedItem: CartItem | null;
+  onApplyQty: (n: number) => void;
+  onApplyDiscount: (n: number) => void;
+}) {
   const [expr, setExpr] = useState("");
   const [result, setResult] = useState("0");
 

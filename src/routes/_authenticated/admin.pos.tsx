@@ -375,26 +375,26 @@ function PosPage() {
   const portalContainer = isFullscreen ? posRootEl : undefined;
 
   return (
-    <div ref={posRootRef} className="-m-4 grid gap-4 bg-slate-50 p-4 dark:bg-slate-950 sm:-m-6 sm:p-6 lg:-m-8 lg:h-[calc(100dvh-2rem)] lg:grid-cols-[minmax(0,1fr)_420px] lg:overflow-hidden lg:p-6">
+    <div ref={posRootRef} className="-m-4 grid gap-5 bg-gradient-to-br from-slate-100 via-slate-50 to-white p-4 antialiased dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 sm:-m-6 sm:p-6 lg:-m-8 lg:h-[calc(100dvh-2rem)] lg:grid-cols-[minmax(0,1fr)_440px] lg:overflow-hidden lg:p-6">
       {/* LEFT: Scan/Search + Cart items summary */}
-      <section className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <section className="flex min-w-0 flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white/95 shadow-[0_10px_40px_-20px_rgba(15,23,42,0.25)] backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/90">
         {/* Scanner header */}
-        <div className="border-b border-slate-200 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 dark:border-slate-800">
-          <div className="mb-3 flex items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-md">
+        <div className="border-b border-slate-200/70 bg-gradient-to-br from-primary/12 via-primary/5 to-transparent p-6 dark:border-slate-800">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/25">
               <ScanLine className="h-5 w-5" />
             </span>
             <div className="flex-1">
-              <div className="text-sm font-bold">Scan or search a product</div>
-              <div className="text-xs text-slate-500">Use a barcode scanner, or type a name / SKU / barcode</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-primary/70">Point of Sale</div>
+              <div className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50">Scan or search a product</div>
             </div>
             {isFullscreen && (
               <span
                 role="status"
                 aria-live="polite"
-                className="hidden items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 sm:inline-flex"
+                className="hidden items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 sm:inline-flex"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
                 Fullscreen
               </span>
             )}
@@ -406,10 +406,10 @@ function PosPage() {
               aria-label={isFullscreen ? "Exit fullscreen (Escape)" : "Enter fullscreen"}
               aria-pressed={isFullscreen}
               title={isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen"}
-              className="focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              className="h-9 rounded-xl border-slate-200 bg-white/80 font-medium shadow-sm hover:bg-white focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-900/60"
             >
               {isFullscreen ? <Minimize2 className="h-4 w-4" aria-hidden="true" /> : <Maximize2 className="h-4 w-4" aria-hidden="true" />}
-              <span className="ml-1 hidden sm:inline">{isFullscreen ? "Exit" : "Fullscreen"}</span>
+              <span className="ml-1.5 hidden sm:inline">{isFullscreen ? "Exit" : "Fullscreen"}</span>
             </Button>
           </div>
           <div className="relative">

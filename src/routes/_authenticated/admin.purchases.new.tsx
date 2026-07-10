@@ -37,6 +37,7 @@ function NewPurchasePage() {
   const [supplierId, setSupplierId] = useState<string>("");
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [note, setNote] = useState("");
+  const [reference, setReference] = useState("");
   const [discount, setDiscount] = useState(0);
   const [tax, setTax] = useState(0);
   const [shipping, setShipping] = useState(0);

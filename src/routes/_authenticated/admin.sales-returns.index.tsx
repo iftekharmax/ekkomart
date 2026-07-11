@@ -179,6 +179,7 @@ function SalesReturnsPage() {
                 <th className="px-4 py-3 text-left font-semibold">Reference</th>
                 <th className="px-4 py-3 text-left font-semibold">Date</th>
                 <th className="px-4 py-3 text-left font-semibold">Customer</th>
+                <th className="px-4 py-3 text-left font-semibold">Staff</th>
                 <th className="px-4 py-3 text-left font-semibold">Status</th>
                 <th className="px-4 py-3 text-right font-semibold">Items</th>
                 <th className="px-4 py-3 text-right font-semibold">Qty</th>
@@ -190,16 +191,16 @@ function SalesReturnsPage() {
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i} className="border-t">
-                    <td colSpan={8} className="px-4 py-3"><div className="h-6 animate-pulse rounded bg-muted" /></td>
+                    <td colSpan={9} className="px-4 py-3"><div className="h-6 animate-pulse rounded bg-muted" /></td>
                   </tr>
                 ))
               ) : isError ? (
-                <tr><td colSpan={8} className="px-4 py-12 text-center">
+                <tr><td colSpan={9} className="px-4 py-12 text-center">
                   <p className="mb-2 text-sm text-destructive">Failed to load returns.</p>
                   <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-16">
+                <tr><td colSpan={9} className="px-4 py-16">
                   <div className="flex flex-col items-center gap-3 text-center">
                     <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">
                       <Undo2 className="h-7 w-7 text-muted-foreground" />
@@ -230,6 +231,14 @@ function SalesReturnsPage() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtDate(r.return_date)}</td>
                     <td className="px-4 py-3 font-medium">{r.customer || <span className="text-muted-foreground">Walk-in</span>}</td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1.5 text-xs">
+                        <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                          {(r.creator_name ?? "S").slice(0, 1).toUpperCase()}
+                        </span>
+                        <span className="font-medium">{r.creator_name ?? <span className="text-muted-foreground">System</span>}</span>
+                      </span>
+                    </td>
                     <td className="px-4 py-3"><StatusPill status={r.status ?? "completed"} /></td>
                     <td className="px-4 py-3 text-right tabular-nums">{items.length}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{qty}</td>
@@ -401,6 +410,9 @@ function ReturnDetailModal({
       reason: header.reason,
       notes: header.notes,
       status: header.status,
+      staff: header.creator_name,
+      voided_by_name: header.voider_name,
+      voided_at: header.voided_at,
       items: items.map((it) => ({
         name: `${it.product?.name ?? "—"}${it.variation?.name ? " · " + it.variation.name : ""}`,
         qty: Number(it.quantity),
@@ -429,7 +441,10 @@ function ReturnDetailModal({
                   <StatusPill status={header.status ?? "completed"} />
                 </div>
                 <h2 className="mt-2 truncate text-xl font-bold">{header.customer || "Walk-in customer"}</h2>
-                <p className="text-xs text-muted-foreground">Return date · {fmtDate(header.return_date)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Return date · {fmtDate(header.return_date)} · Processed by{" "}
+                  <span className="font-semibold text-foreground">{header.creator_name ?? "System"}</span>
+                </p>
               </div>
               <div className="flex flex-wrap gap-2 sm:justify-end">
                 <Button size="sm" variant="outline" onClick={handlePrint}>
@@ -507,7 +522,7 @@ function ReturnDetailModal({
                       icon={<CheckCircle2 className="h-3.5 w-3.5" />}
                       color="bg-emerald-500"
                       title="Return created"
-                      subtitle={`by ${short(header.created_by)} · stock restored`}
+                      subtitle={`by ${header.creator_name ?? "System"} · stock restored`}
                       time={header.created_at}
                     />
                     {voided ? (
@@ -516,8 +531,8 @@ function ReturnDetailModal({
                         color="bg-amber-500"
                         title="Return voided"
                         subtitle={header.void_reason
-                          ? `by ${short(header.voided_by)} · reason: ${header.void_reason}`
-                          : `by ${short(header.voided_by)}`}
+                          ? `by ${header.voider_name ?? "System"} · reason: ${header.void_reason}`
+                          : `by ${header.voider_name ?? "System"}`}
                         time={header.voided_at ?? header.updated_at}
                       />
                     ) : (

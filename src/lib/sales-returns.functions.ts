@@ -37,6 +37,15 @@ function makeReference() {
   return `SRT-${yy}${mm}${dd}-${rnd}`;
 }
 
+async function loadNameMap(ids: string[]) {
+  const map = new Map<string, string>();
+  if (!ids.length) return map;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: profs } = await (supabaseAdmin as any).from("profiles").select("id,full_name").in("id", ids);
+  for (const p of (profs ?? []) as any[]) map.set(p.id, p.full_name);
+  return map;
+}
+
 export const listSalesReturns = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -47,11 +56,7 @@ export const listSalesReturns = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     const rows = (data ?? []) as any[];
     const ids = Array.from(new Set(rows.flatMap((r) => [r.created_by, r.voided_by]).filter(Boolean))) as string[];
-    const nameMap = new Map<string, string>();
-    if (ids.length) {
-      const { data: profs } = await context.supabase.from("profiles").select("id,full_name").in("id", ids);
-      for (const p of (profs ?? []) as any[]) nameMap.set(p.id, p.full_name);
-    }
+    const nameMap = await loadNameMap(ids);
     return rows.map((r) => ({
       ...r,
       creator_name: r.created_by ? nameMap.get(r.created_by) ?? null : null,

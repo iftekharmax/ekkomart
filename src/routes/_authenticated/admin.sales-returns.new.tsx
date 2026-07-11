@@ -164,81 +164,157 @@ function NewReturnPage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="mb-4 flex items-center justify-between">
+      {/* Hero header */}
+      <div className="mb-5">
         <button
           onClick={() => navigate({ to: "/admin/sales-returns" })}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          className="mb-3 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ArrowLeft className="h-4 w-4" /> Back
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to returns
         </button>
-        <h2 className="text-xl font-bold sm:text-2xl">New Sales Return</h2>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-md">
+              <Undo2 className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-primary/80">Returns</p>
+              <h2 className="text-xl font-bold tracking-tight sm:text-2xl">New Sales Return</h2>
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground sm:text-right">
+            Stock will be <span className="font-semibold text-emerald-600">restored automatically</span> once saved
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2">
-        <div className="sm:col-span-2" ref={suggestRef}>
-          <Label>Find sale</Label>
-          <div className="relative mt-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={saleSearch}
-              onChange={(e) => {
-                setSaleSearch(e.target.value);
-                setShowSuggest(true);
-                if (orderId) setOrderId("");
-              }}
-              onFocus={() => setShowSuggest(true)}
-              placeholder="Type invoice number or customer mobile / name…"
-              className="h-11 rounded-lg pl-9"
-              autoComplete="off"
-            />
-            {showSuggest && suggestions.length > 0 && (
-              <div className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-lg border bg-popover shadow-lg">
-                {suggestions.map((p: any) => (
-                  <button
-                    type="button"
-                    key={p.id}
-                    onClick={() => pickSale(p)}
-                    className="flex w-full items-center justify-between gap-3 border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 font-mono text-xs font-semibold text-primary">
-                        <Receipt className="h-3.5 w-3.5" /> {p.invoice}
-                      </div>
-                      <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
-                        <User className="h-3 w-3" /> {p.customer ?? "Walk-in"}
-                      </div>
+      {/* Find sale card */}
+      <div className="rounded-2xl border bg-card p-4 shadow-sm sm:p-5">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2" ref={suggestRef}>
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Find sale</Label>
+            <div className="relative mt-1.5">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={saleSearch}
+                onChange={(e) => {
+                  setSaleSearch(e.target.value);
+                  setShowSuggest(true);
+                  if (orderId) setOrderId("");
+                }}
+                onFocus={() => setShowSuggest(true)}
+                onKeyDown={(e) => {
+                  if (!showSuggest) return;
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setActiveIdx((i) => Math.min(i + 1, Math.max(0, suggestions.length - 1)));
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setActiveIdx((i) => Math.max(0, i - 1));
+                  } else if (e.key === "Enter") {
+                    if (suggestions[activeIdx]) {
+                      e.preventDefault();
+                      pickSale(suggestions[activeIdx]);
+                    }
+                  } else if (e.key === "Escape") {
+                    setShowSuggest(false);
+                  }
+                }}
+                placeholder="Type invoice number or customer mobile / name…"
+                className="h-11 rounded-xl border-2 pl-9 pr-9 text-sm font-medium shadow-sm focus-visible:border-primary"
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={showSuggest}
+                aria-controls="sale-suggestions"
+              />
+              {salesLoading && (
+                <Loader2 className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+              )}
+              {!salesLoading && saleSearch && (
+                <button
+                  type="button"
+                  onClick={() => { setSaleSearch(""); setShowSuggest(true); if (orderId) setOrderId(""); }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-muted"
+                  aria-label="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+              {showSuggest && (
+                <div
+                  id="sale-suggestions"
+                  role="listbox"
+                  className="absolute z-30 mt-1.5 max-h-72 w-full overflow-auto rounded-xl border bg-popover shadow-xl"
+                >
+                  {salesLoading ? (
+                    <div className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading recent sales…
                     </div>
-                    <span className="shrink-0 text-xs font-semibold tabular-nums">৳{Number(p.total).toFixed(2)}</span>
-                  </button>
-                ))}
-              </div>
+                  ) : suggestions.length > 0 ? (
+                    suggestions.map((p: any, i: number) => (
+                      <button
+                        type="button"
+                        key={p.id}
+                        role="option"
+                        aria-selected={i === activeIdx}
+                        onMouseEnter={() => setActiveIdx(i)}
+                        onClick={() => pickSale(p)}
+                        className={`flex w-full items-center justify-between gap-3 border-b px-3 py-2.5 text-left text-sm last:border-b-0 transition-colors ${i === activeIdx ? "bg-primary/10" : "hover:bg-muted"}`}
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-primary">
+                            <Receipt className="h-3.5 w-3.5" /> {p.invoice}
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
+                            <User className="h-3 w-3" /> {p.customer ?? "Walk-in"}
+                          </div>
+                        </div>
+                        <span className="shrink-0 rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-bold tabular-nums text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                          ৳{Number(p.total).toFixed(2)}
+                        </span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-4 text-sm text-muted-foreground">
+                      No matching sale found. You can still create a manual return below.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            {orderId && (
+              <button type="button" onClick={clearSale} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+                <X className="h-3 w-3" /> Clear selected sale
+              </button>
             )}
-            {showSuggest && saleSearch && suggestions.length === 0 && (
-              <div className="absolute z-30 mt-1 w-full rounded-lg border bg-popover px-3 py-3 text-sm text-muted-foreground shadow-lg">
-                No matching sale found. You can still create a manual return below.
-              </div>
+            {saleLoading && (
+              <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Loading sale items…
+              </p>
             )}
           </div>
-          {orderId && (
-            <button type="button" onClick={clearSale} className="mt-1.5 text-xs text-muted-foreground underline hover:text-foreground">
-              Clear selected sale
-            </button>
-          )}
-        </div>
-        <div>
-          <Label>Return date</Label>
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
-        <div>
-          <Label>Customer</Label>
-          <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Walk-in" />
+          <div>
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Return date</Label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1.5 h-11 rounded-xl" />
+          </div>
+          <div>
+            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Customer</Label>
+            <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Walk-in" className="mt-1.5 h-11 rounded-xl" />
+          </div>
         </div>
       </div>
 
-      <div className="mt-4 rounded-xl border bg-card">
-        <div className="border-b px-4 py-3 font-semibold">Items to return</div>
+      <div className="mt-4 rounded-2xl border bg-card shadow-sm">
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <div className="flex items-center gap-2 font-semibold">
+            <CheckCircle2 className="h-4 w-4 text-primary" /> Items to return
+          </div>
+          {items.length > 0 && (
+            <span className="text-xs text-muted-foreground">{items.filter(i => i.quantity > 0).length} of {items.length} selected</span>
+          )}
+        </div>
         {items.length === 0 ? (
-          <div className="p-6 text-center text-sm text-muted-foreground">
+          <div className="p-8 text-center text-sm text-muted-foreground">
             {orderId ? "No returnable items on this sale" : "Search and pick a sale to load its items"}
           </div>
         ) : (

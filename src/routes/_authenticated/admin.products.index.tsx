@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listProducts, deleteProduct, listAllVariations } from "@/lib/products.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -21,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/admin/products/")({ compon
 
 type StockStatus = "in" | "low" | "out";
 type StockFilter = "all" | StockStatus;
+type SortKey = "status" | "price-asc" | "price-desc";
 const PAGE_SIZE = 10;
 const STATUS_ORDER: Record<StockStatus, number> = { out: 0, low: 1, in: 2 };
 
@@ -34,24 +32,29 @@ function ProductsListPage() {
   const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
-  const [category, setCategory] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "status">("status");
+  const [category, setCategory] = useState<string>("");
+  const [sortBy, setSortBy] = useState<SortKey>("status");
   const [page, setPage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
 
-  // Debounce search input
+  // Debounce search input; searching resets pagination
   useEffect(() => {
-    const t = setTimeout(() => { setQ(qInput); setPage(1); }, 250);
+    const t = setTimeout(() => setQ(qInput), 250);
     return () => clearTimeout(t);
   }, [qInput]);
 
-  const { data: products = [], isLoading: pLoading } = useQuery({
+  // Any filter/search/sort change → reset page 1
+  useEffect(() => { setPage(1); }, [q, stockFilter, category, sortBy]);
+
+  const { data: products = [], isLoading: pLoading, isFetching: pFetching } = useQuery({
     queryKey: ["admin-products"], queryFn: () => listFn(),
   });
   const { data: variations = [], isLoading: vLoading } = useQuery({
     queryKey: ["admin-all-variations"], queryFn: () => varsFn(),
   });
   const isLoading = pLoading || vLoading;
+  const isSearching = qInput !== q || (pFetching && !isLoading);
 
   const stockByProduct = useMemo(() => {
     const m = new Map<string, number>();
@@ -100,7 +103,7 @@ function ProductsListPage() {
       if (s && ![p.name, p.sku, p.barcode, p.category, p.subcategory, p.brand]
         .some((v) => (v ?? "").toString().toLowerCase().includes(s))) return false;
       if (stockFilter !== "all" && p._status !== stockFilter) return false;
-      if (category !== "all" && p.category !== category) return false;
+      if (category && p.category !== category) return false;
       return true;
     });
     list.sort((a, b) => {
@@ -117,195 +120,223 @@ function ProductsListPage() {
 
   const detail = detailId ? withStock.find((p) => p.id === detailId) : null;
 
-  const resetFilters = () => {
-    setQInput(""); setQ(""); setStockFilter("all"); setCategory("all"); setPage(1);
+  const hasFilters = Boolean(q || stockFilter !== "all" || category);
+  const clearFilters = () => { setQInput(""); setQ(""); setStockFilter("all"); setCategory(""); };
+
+  const openDetail = (id: string, e: React.MouseEvent | React.KeyboardEvent) => {
+    triggerRef.current = e.currentTarget as HTMLElement;
+    setDetailId(id);
   };
-  const hasFilters = q || stockFilter !== "all" || category !== "all";
+  const closeDetail = () => {
+    setDetailId(null);
+    // Return focus to trigger row
+    setTimeout(() => triggerRef.current?.focus(), 0);
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Products</h2>
-          <p className="text-sm text-muted-foreground">Manage your catalog, stock, and pricing.</p>
+    <div>
+      <div className="mb-6 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="truncate text-xl font-bold sm:text-2xl">Products</h2>
+          <p className="hidden text-sm text-muted-foreground sm:block">Manage your catalog, stock, and pricing.</p>
         </div>
-        <Button onClick={() => navigate({ to: "/admin/products/new" })} className="rounded-full">
-          <Plus className="mr-1 h-4 w-4" /> New product
+        <Button size="sm" className="shrink-0" onClick={() => navigate({ to: "/admin/products/new" })}>
+          <Plus className="mr-1 h-4 w-4" /> <span className="hidden sm:inline">New product</span><span className="sm:hidden">New</span>
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {/* Stat filter cards */}
+      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard label="Total" value={stats.total} icon={Package} tone="muted"
-          active={stockFilter === "all"} onClick={() => { setStockFilter("all"); setPage(1); }} />
+          active={stockFilter === "all"} onClick={() => setStockFilter("all")} />
         <StatCard label="In stock" value={stats.inStock} icon={CheckCircle2} tone="emerald"
-          active={stockFilter === "in"} onClick={() => { setStockFilter("in"); setPage(1); }} />
+          active={stockFilter === "in"} onClick={() => setStockFilter("in")} />
         <StatCard label="Low stock" value={stats.low} icon={AlertTriangle} tone="amber"
-          active={stockFilter === "low"} onClick={() => { setStockFilter("low"); setPage(1); }} />
+          active={stockFilter === "low"} onClick={() => setStockFilter("low")} />
         <StatCard label="Out of stock" value={stats.out} icon={AlertTriangle} tone="rose"
-          active={stockFilter === "out"} onClick={() => { setStockFilter("out"); setPage(1); }} />
+          active={stockFilter === "out"} onClick={() => setStockFilter("out")} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card p-2 shadow-sm">
-        <div className="relative flex-1 min-w-[220px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      {/* Filters — matches purchases list */}
+      <div className="mb-4 grid gap-2 rounded-xl border bg-card p-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by name, barcode, brand, category…"
             value={qInput}
             onChange={(e) => setQInput(e.target.value)}
-            className="h-10 rounded-xl border-0 bg-muted/40 pl-9 pr-9 focus-visible:ring-1"
+            placeholder="Search name, barcode, SKU…"
+            className="pl-8 pr-8"
             aria-label="Search products"
           />
           {qInput && (
             <button
+              type="button"
               onClick={() => setQInput("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-muted"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-muted"
               aria-label="Clear search"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
-        <Select value={category} onValueChange={(v) => { setCategory(v); setPage(1); }}>
-          <SelectTrigger className="h-10 w-[160px] rounded-xl border-0 bg-muted/40"><SelectValue placeholder="Category" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={sortBy} onValueChange={(v) => { setSortBy(v as typeof sortBy); setPage(1); }}>
-          <SelectTrigger className="h-10 w-[180px] rounded-xl border-0 bg-muted/40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="status">Status: urgent first</SelectItem>
-            <SelectItem value="price-asc">Price: low → high</SelectItem>
-            <SelectItem value="price-desc">Price: high → low</SelectItem>
-          </SelectContent>
-        </Select>
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={resetFilters} className="h-10 rounded-xl">
-            <X className="mr-1 h-4 w-4" /> Reset
-          </Button>
-        )}
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="h-9 rounded-md border bg-background px-3 text-sm"
+          aria-label="Filter by category"
+        >
+          <option value="">All categories</option>
+          {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select
+          value={stockFilter}
+          onChange={(e) => setStockFilter(e.target.value as StockFilter)}
+          className="h-9 rounded-md border bg-background px-3 text-sm"
+          aria-label="Filter by stock"
+        >
+          <option value="all">All stock</option>
+          <option value="in">In stock</option>
+          <option value="low">Low stock</option>
+          <option value="out">Out of stock</option>
+        </select>
+        <div className="flex gap-2">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortKey)}
+            className="h-9 flex-1 rounded-md border bg-background px-3 text-sm"
+            aria-label="Sort"
+          >
+            <option value="status">Sort: urgent first</option>
+            <option value="price-asc">Price: low → high</option>
+            <option value="price-desc">Price: high → low</option>
+          </select>
+          {hasFilters && (
+            <Button variant="outline" size="sm" onClick={clearFilters} title="Clear filters">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3">Product</th>
-                <th className="px-4 py-3">Barcode</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3 text-right">Price</th>
-                <th className="px-4 py-3 text-right">Stock</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right font-semibold">Actions</th>
+      {/* Desktop table */}
+      <div className="overflow-x-auto rounded-xl border bg-card">
+        <table className="w-full min-w-[900px] text-sm">
+          <thead className="bg-muted/40 text-left">
+            <tr>
+              <th className="px-4 py-3 font-semibold">Product</th>
+              <th className="px-4 py-3 font-semibold">Barcode</th>
+              <th className="px-4 py-3 font-semibold">Category</th>
+              <th className="px-4 py-3 text-right font-semibold">Price</th>
+              <th className="px-4 py-3 text-right font-semibold">Stock</th>
+              <th className="px-4 py-3 font-semibold">Status</th>
+              <th className="px-4 py-3 text-right font-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(isLoading || isSearching) && Array.from({ length: 6 }).map((_, i) => (
+              <tr key={`sk-${i}`} className="border-t">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="h-11 w-11 animate-pulse rounded-lg bg-muted" />
+                    <div className="space-y-1.5">
+                      <div className="h-3 w-40 animate-pulse rounded bg-muted" />
+                      <div className="h-2.5 w-24 animate-pulse rounded bg-muted" />
+                    </div>
+                  </div>
+                </td>
+                {Array.from({ length: 6 }).map((__, j) => (
+                  <td key={j} className="px-4 py-3"><div className="h-3 w-16 animate-pulse rounded bg-muted" /></td>
+                ))}
               </tr>
-            </thead>
-            <tbody>
-              {isLoading && Array.from({ length: 6 }).map((_, i) => (
-                <tr key={`sk-${i}`} className="border-t">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="h-11 w-11 animate-pulse rounded-lg bg-muted" />
-                      <div className="space-y-1.5">
-                        <div className="h-3 w-40 animate-pulse rounded bg-muted" />
-                        <div className="h-2.5 w-24 animate-pulse rounded bg-muted" />
-                      </div>
-                    </div>
-                  </td>
-                  {Array.from({ length: 6 }).map((__, j) => (
-                    <td key={j} className="px-4 py-3"><div className="h-3 w-16 animate-pulse rounded bg-muted" /></td>
-                  ))}
-                </tr>
-              ))}
+            ))}
 
-              {!isLoading && pageItems.map((p) => {
-                const isUrgent = p._status !== "in";
-                return (
-                  <tr
-                    key={p.id}
-                    onClick={() => setDetailId(p.id)}
-                    className={`group cursor-pointer border-t transition hover:bg-muted/30 ${
-                      p._status === "out" ? "bg-rose-50/40" : p._status === "low" ? "bg-amber-50/40" : ""
-                    }`}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        {isUrgent && (
-                          <span className={`h-8 w-1 shrink-0 rounded-full ${p._status === "out" ? "bg-rose-500" : "bg-amber-500"}`} />
-                        )}
-                        {p.img ? (
-                          <img src={p.img} alt={p.name} className="h-11 w-11 rounded-lg object-cover ring-1 ring-border" />
-                        ) : (
-                          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-                            <Package className="h-4 w-4" />
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <div className="truncate font-medium">{p.name}</div>
-                          {p.brand && <div className="truncate text-xs text-muted-foreground">{p.brand}</div>}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{p.barcode ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {p.category ?? "—"}{p.subcategory ? ` / ${p.subcategory}` : ""}
-                    </td>
-                    <td className="px-4 py-3 text-right font-medium tabular-nums">${Number(p.price).toFixed(2)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="inline-flex items-center gap-1.5">
-                        <StockTrend status={p._status} />
-                        <span className="tabular-nums font-medium">{p._stock}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3"><StatusBadge status={p._status} /></td>
-                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" onClick={() => setDetailId(p.id)} aria-label="View product">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Link to="/admin/products/$id/edit" params={{ id: p.id }}>
-                          <Button size="sm" variant="outline" aria-label="Edit product"><Pencil className="h-4 w-4" /></Button>
-                        </Link>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          aria-label="Delete product"
-                          onClick={() => { if (confirm("Delete this product?")) deleteM.mutate(p.id); }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-
-              {!isLoading && pageItems.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center">
-                    <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground">
-                      <Package className="h-5 w-5" />
-                    </div>
-                    <p className="mt-3 text-sm font-medium">
-                      {hasFilters ? "No products match your search" : "No products yet"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {hasFilters ? "Try adjusting your search or filters." : "Add your first product to get started."}
-                    </p>
-                    {hasFilters && (
-                      <Button variant="outline" size="sm" className="mt-4 rounded-full" onClick={resetFilters}>
-                        <X className="mr-1 h-4 w-4" /> Clear filters
-                      </Button>
+            {!isLoading && !isSearching && pageItems.map((p) => (
+              <tr
+                key={p.id}
+                tabIndex={0}
+                role="button"
+                aria-label={`View ${p.name}`}
+                onClick={(e) => openDetail(p.id, e)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDetail(p.id, e); } }}
+                className={`group cursor-pointer border-t align-middle transition hover:bg-muted/30 focus:outline-none focus-visible:bg-muted/40 ${
+                  p._status === "out" ? "bg-rose-50/40" : p._status === "low" ? "bg-amber-50/40" : ""
+                }`}
+              >
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    {p._status !== "in" && (
+                      <span className={`h-8 w-1 shrink-0 rounded-full ${p._status === "out" ? "bg-rose-500" : "bg-amber-500"}`} />
                     )}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    {p.img ? (
+                      <img src={p.img} alt={p.name} className="h-11 w-11 rounded-lg object-cover ring-1 ring-border" />
+                    ) : (
+                      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+                        <Package className="h-4 w-4" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{p.name}</div>
+                      {p.brand && <div className="truncate text-xs text-muted-foreground">{p.brand}</div>}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{p.barcode ?? "—"}</td>
+                <td className="px-4 py-3 text-muted-foreground">
+                  {p.category ?? "—"}{p.subcategory ? ` / ${p.subcategory}` : ""}
+                </td>
+                <td className="px-4 py-3 text-right font-medium tabular-nums">${Number(p.price).toFixed(2)}</td>
+                <td className="px-4 py-3 text-right">
+                  <div className="inline-flex items-center gap-1.5">
+                    <StockTrend status={p._status} />
+                    <span className="tabular-nums font-medium">{p._stock}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3"><StatusBadge status={p._status} /></td>
+                <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex justify-end gap-2">
+                    <Button size="sm" variant="outline" onClick={(e) => openDetail(p.id, e)} aria-label="View product">
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Link to="/admin/products/$id/edit" params={{ id: p.id }}>
+                      <Button size="sm" variant="outline" aria-label="Edit product"><Pencil className="h-4 w-4" /></Button>
+                    </Link>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      aria-label="Delete product"
+                      onClick={() => { if (confirm("Delete this product?")) deleteM.mutate(p.id); }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
 
-        {!isLoading && filtered.length > 0 && (
+            {!isLoading && !isSearching && pageItems.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-4 py-16 text-center">
+                  <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground">
+                    <Package className="h-5 w-5" />
+                  </div>
+                  <p className="mt-3 text-sm font-medium">
+                    {hasFilters ? "No products match your search" : "No products yet"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {hasFilters ? "Try adjusting your search or filters." : "Add your first product to get started."}
+                  </p>
+                  {hasFilters && (
+                    <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>
+                      <X className="mr-1 h-4 w-4" /> Clear filters
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+
+        {!isLoading && !isSearching && filtered.length > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/20 px-4 py-3 text-sm">
             <div className="text-muted-foreground">
               Showing <span className="font-medium text-foreground">{(safePage - 1) * PAGE_SIZE + 1}</span>
@@ -325,8 +356,11 @@ function ProductsListPage() {
         )}
       </div>
 
-      <Dialog open={!!detail} onOpenChange={(o) => !o && setDetailId(null)}>
-        <DialogContent className="max-w-2xl">
+      <Dialog open={!!detail} onOpenChange={(o) => { if (!o) closeDetail(); }}>
+        <DialogContent
+          className="max-w-2xl"
+          onEscapeKeyDown={() => closeDetail()}
+        >
           {detail && (
             <>
               <DialogHeader>
@@ -434,7 +468,7 @@ function StatCard({
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-3 rounded-2xl border bg-card p-4 text-left transition hover:shadow-sm ${active ? "ring-2 ring-primary" : ""}`}
+      className={`flex items-center gap-3 rounded-xl border bg-card p-4 text-left transition hover:shadow-sm ${active ? "ring-2 ring-primary" : ""}`}
     >
       <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${toneCls[tone]}`}>
         <Icon className="h-5 w-5" />

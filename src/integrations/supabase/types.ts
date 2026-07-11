@@ -776,6 +776,7 @@ export type Database = {
           created_by: string | null
           customer: string | null
           id: string
+          notes: string | null
           order_id: string | null
           reason: string | null
           reference: string
@@ -784,12 +785,16 @@ export type Database = {
           subtotal: number
           total: number
           updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           customer?: string | null
           id?: string
+          notes?: string | null
           order_id?: string | null
           reason?: string | null
           reference: string
@@ -798,12 +803,16 @@ export type Database = {
           subtotal?: number
           total?: number
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           created_at?: string
           created_by?: string | null
           customer?: string | null
           id?: string
+          notes?: string | null
           order_id?: string | null
           reason?: string | null
           reference?: string
@@ -812,6 +821,9 @@ export type Database = {
           subtotal?: number
           total?: number
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {

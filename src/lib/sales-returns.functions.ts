@@ -23,7 +23,8 @@ const returnInput = z.object({
   customer: z.string().nullable().optional(),
   return_date: z.string().optional(),
   reference: z.string().trim().max(100).nullable().optional(),
-  reason: z.string().nullable().optional(),
+  reason: z.string().trim().min(3, "Reason is required").max(500),
+  notes: z.string().trim().max(1000).nullable().optional(),
   items: z.array(itemInput).min(1),
 });
 
@@ -133,7 +134,8 @@ export const createSalesReturn = createServerFn({ method: "POST" })
       order_id: data.order_id ?? null,
       customer,
       return_date: data.return_date ?? new Date().toISOString().slice(0, 10),
-      reason: data.reason ?? null,
+      reason: data.reason,
+      notes: data.notes ?? null,
       subtotal,
       total: subtotal,
       status: "completed",
@@ -160,7 +162,12 @@ export const createSalesReturn = createServerFn({ method: "POST" })
 
 export const voidSalesReturn = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
+  .inputValidator((d: { id: string; reason: string }) =>
+    z.object({
+      id: z.string().uuid(),
+      reason: z.string().trim().min(3, "Reason is required").max(500),
+    }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { data: row, error: e0 } = await (context.supabase.from("sales_returns" as any) as any)
@@ -168,7 +175,12 @@ export const voidSalesReturn = createServerFn({ method: "POST" })
     if (e0) throw new Error(e0.message);
     if (row.status === "voided") return { ok: true };
     const { error } = await (context.supabase.from("sales_returns" as any) as any)
-      .update({ status: "voided" } as any).eq("id", data.id);
+      .update({
+        status: "voided",
+        void_reason: data.reason,
+        voided_at: new Date().toISOString(),
+        voided_by: context.userId,
+      } as any).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

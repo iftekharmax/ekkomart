@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
   createSalesReturn, listSalesForReturn, getSaleForReturn,
@@ -42,6 +42,7 @@ const REASON_OPTIONS = [
 
 function NewReturnPage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const listFn = useServerFn(listSalesForReturn);
   const getFn = useServerFn(getSaleForReturn);
   const createFn = useServerFn(createSalesReturn);
@@ -145,6 +146,9 @@ function NewReturnPage() {
     },
     onSuccess: () => {
       toast.success("Sales return created — stock restored");
+      qc.invalidateQueries({ queryKey: ["admin-sales-returns"] });
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
+      qc.invalidateQueries({ queryKey: ["products"] });
       navigate({ to: "/admin/sales-returns" });
     },
     onError: (e: Error) => toast.error(e.message),

@@ -61,9 +61,9 @@ function NewReturnPage() {
   useEffect(() => {
     if (!saleDetail) { setItems([]); return; }
     setCustomer(saleDetail.customer ?? "");
-    setItems(saleDetail.items
-      .filter((it) => it.product_id)
-      .map((it) => ({
+    setItems((saleDetail.items as any[])
+      .filter((it: any) => it.product_id)
+      .map((it: any) => ({
         key: it.id,
         product_id: it.product_id as string,
         variation_id: it.variation_id ?? null,

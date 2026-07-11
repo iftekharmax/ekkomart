@@ -46,11 +46,15 @@ function NewReturnPage() {
   const getFn = useServerFn(getSaleForReturn);
   const createFn = useServerFn(createSalesReturn);
 
-  const { data: sales = [] } = useQuery({ queryKey: ["admin-sales-for-return"], queryFn: () => listFn() });
+  const { data: sales = [], isLoading: salesLoading } = useQuery({
+    queryKey: ["admin-sales-for-return"],
+    queryFn: () => listFn(),
+  });
 
   const [orderId, setOrderId] = useState<string>("");
   const [saleSearch, setSaleSearch] = useState("");
   const [showSuggest, setShowSuggest] = useState(false);
+  const [activeIdx, setActiveIdx] = useState(0);
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [reasonType, setReasonType] = useState<string>("");
   const [reasonOther, setReasonOther] = useState<string>("");
@@ -67,7 +71,9 @@ function NewReturnPage() {
       .slice(0, 8);
   }, [sales, saleSearch]);
 
-  const { data: saleDetail } = useQuery({
+  useEffect(() => { setActiveIdx(0); }, [saleSearch, showSuggest]);
+
+  const { data: saleDetail, isFetching: saleLoading } = useQuery({
     queryKey: ["admin-sale-detail-for-return", orderId],
     queryFn: () => getFn({ data: { id: orderId } }),
     enabled: !!orderId,

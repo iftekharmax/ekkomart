@@ -146,6 +146,9 @@ function NewReturnPage() {
     },
     onSuccess: () => {
       toast.success("Sales return created — stock restored");
+      qc.invalidateQueries({ queryKey: ["admin-sales-returns"] });
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
+      qc.invalidateQueries({ queryKey: ["products"] });
       navigate({ to: "/admin/sales-returns" });
     },
     onError: (e: Error) => toast.error(e.message),

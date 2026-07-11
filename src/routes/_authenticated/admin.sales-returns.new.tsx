@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2, Search, User, Receipt } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/sales-returns/new")({
@@ -28,6 +28,18 @@ type Line = {
   unit_price: number;
 };
 
+const REASON_OPTIONS = [
+  "Damaged product",
+  "Defective / not working",
+  "Wrong item delivered",
+  "Size or color mismatch",
+  "Customer changed mind",
+  "Expired product",
+  "Late delivery",
+  "Duplicate order",
+  "Other",
+] as const;
+
 function NewReturnPage() {
   const navigate = useNavigate();
   const listFn = useServerFn(listSalesForReturn);
@@ -38,20 +50,21 @@ function NewReturnPage() {
 
   const [orderId, setOrderId] = useState<string>("");
   const [saleSearch, setSaleSearch] = useState("");
+  const [showSuggest, setShowSuggest] = useState(false);
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [reference, setReference] = useState("");
-  const [reason, setReason] = useState("");
-  const [notes, setNotes] = useState("");
+  const [reasonType, setReasonType] = useState<string>("");
+  const [reasonOther, setReasonOther] = useState<string>("");
   const [customer, setCustomer] = useState("");
   const [items, setItems] = useState<Line[]>([]);
   const [errors, setErrors] = useState<{ reason?: string; items?: string }>({});
+  const suggestRef = useRef<HTMLDivElement | null>(null);
 
-  const filteredSales = useMemo(() => {
+  const suggestions = useMemo(() => {
     const q = saleSearch.trim().toLowerCase();
-    if (!q) return sales as any[];
-    return (sales as any[]).filter((p) =>
-      [p.invoice, p.customer].filter(Boolean).join(" ").toLowerCase().includes(q),
-    );
+    if (!q) return (sales as any[]).slice(0, 8);
+    return (sales as any[])
+      .filter((p) => [p.invoice, p.customer].filter(Boolean).join(" ").toLowerCase().includes(q))
+      .slice(0, 8);
   }, [sales, saleSearch]);
 
   const { data: saleDetail } = useQuery({
@@ -76,10 +89,21 @@ function NewReturnPage() {
       })));
   }, [saleDetail]);
 
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!suggestRef.current) return;
+      if (!suggestRef.current.contains(e.target as Node)) setShowSuggest(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
   const subtotal = useMemo(
     () => items.reduce((s, i) => s + i.quantity * i.unit_price, 0),
     [items],
   );
+
+  const resolvedReason = reasonType === "Other" ? reasonOther.trim() : reasonType;
 
   const create = useMutation({
     mutationFn: () => {
@@ -92,18 +116,23 @@ function NewReturnPage() {
           unit_price: i.unit_price,
         }));
       const nextErrors: { reason?: string; items?: string } = {};
-      if (reason.trim().length < 3) nextErrors.reason = "Reason is required (min 3 characters)";
+      if (!reasonType) nextErrors.reason = "Please select a return reason";
+      else if (reasonType === "Other" && reasonOther.trim().length < 3)
+        nextErrors.reason = "Please describe the reason (min 3 characters)";
       if (returnItems.length === 0) nextErrors.items = "Add at least one item with quantity > 0";
       setErrors(nextErrors);
-      if (Object.keys(nextErrors).length) throw new Error(nextErrors.reason ?? nextErrors.items!);
+      if (Object.keys(nextErrors).length) {
+        toast.error(nextErrors.reason ?? nextErrors.items!);
+        throw new Error(nextErrors.reason ?? nextErrors.items!);
+      }
       return createFn({
         data: {
           order_id: orderId || null,
           customer: customer.trim() || null,
           return_date: date,
-          reference: reference.trim() || null,
-          reason: reason.trim(),
-          notes: notes.trim() || null,
+          reference: null,
+          reason: resolvedReason,
+          notes: null,
           items: returnItems,
         },
       });
@@ -114,6 +143,18 @@ function NewReturnPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const pickSale = (p: any) => {
+    setOrderId(p.id);
+    setSaleSearch(`${p.invoice} — ${p.customer ?? "Walk-in"}`);
+    setShowSuggest(false);
+  };
+
+  const clearSale = () => {
+    setOrderId("");
+    setSaleSearch("");
+    setItems([]);
+  };
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -127,31 +168,62 @@ function NewReturnPage() {
         <h2 className="text-xl font-bold sm:text-2xl">New Sales Return</h2>
       </div>
 
-      <div className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="sm:col-span-2">
-          <Label>Sale invoice (optional)</Label>
-          <Input value={saleSearch} onChange={(e) => setSaleSearch(e.target.value)}
-            placeholder="Search invoice or customer" className="mb-2" />
-          <Select value={orderId} onValueChange={setOrderId}>
-            <SelectTrigger><SelectValue placeholder={filteredSales.length ? "Select sale" : "No sales match"} /></SelectTrigger>
-            <SelectContent>
-              {filteredSales.map((p: any) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.invoice} — {p.customer ?? "Walk-in"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="grid gap-4 rounded-xl border bg-card p-4 sm:grid-cols-2">
+        <div className="sm:col-span-2" ref={suggestRef}>
+          <Label>Find sale</Label>
+          <div className="relative mt-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={saleSearch}
+              onChange={(e) => {
+                setSaleSearch(e.target.value);
+                setShowSuggest(true);
+                if (orderId) setOrderId("");
+              }}
+              onFocus={() => setShowSuggest(true)}
+              placeholder="Type invoice number or customer mobile / name…"
+              className="h-11 rounded-lg pl-9"
+              autoComplete="off"
+            />
+            {showSuggest && suggestions.length > 0 && (
+              <div className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-lg border bg-popover shadow-lg">
+                {suggestions.map((p: any) => (
+                  <button
+                    type="button"
+                    key={p.id}
+                    onClick={() => pickSale(p)}
+                    className="flex w-full items-center justify-between gap-3 border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 font-mono text-xs font-semibold text-primary">
+                        <Receipt className="h-3.5 w-3.5" /> {p.invoice}
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
+                        <User className="h-3 w-3" /> {p.customer ?? "Walk-in"}
+                      </div>
+                    </div>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums">৳{Number(p.total).toFixed(2)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {showSuggest && saleSearch && suggestions.length === 0 && (
+              <div className="absolute z-30 mt-1 w-full rounded-lg border bg-popover px-3 py-3 text-sm text-muted-foreground shadow-lg">
+                No matching sale found. You can still create a manual return below.
+              </div>
+            )}
+          </div>
+          {orderId && (
+            <button type="button" onClick={clearSale} className="mt-1.5 text-xs text-muted-foreground underline hover:text-foreground">
+              Clear selected sale
+            </button>
+          )}
         </div>
         <div>
           <Label>Return date</Label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div>
-          <Label>Reference</Label>
-          <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Auto if empty" />
-        </div>
-        <div className="sm:col-span-2">
           <Label>Customer</Label>
           <Input value={customer} onChange={(e) => setCustomer(e.target.value)} placeholder="Walk-in" />
         </div>
@@ -161,7 +233,7 @@ function NewReturnPage() {
         <div className="border-b px-4 py-3 font-semibold">Items to return</div>
         {items.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">
-            {orderId ? "No returnable items on this sale" : "Select a sale to load its items"}
+            {orderId ? "No returnable items on this sale" : "Search and pick a sale to load its items"}
           </div>
         ) : (
           <>
@@ -245,34 +317,39 @@ function NewReturnPage() {
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="space-y-4">
-          <div className="rounded-xl border bg-card p-4">
-            <Label htmlFor="return-reason" className="flex items-center gap-1">
-              Return reason <span className="text-rose-600">*</span>
-            </Label>
+        <div className="rounded-xl border bg-card p-4">
+          <Label className="flex items-center gap-1">
+            Return reason <span className="text-rose-600">*</span>
+          </Label>
+          <Select
+            value={reasonType}
+            onValueChange={(v) => {
+              setReasonType(v);
+              if (errors.reason) setErrors((x) => ({ ...x, reason: undefined }));
+            }}
+          >
+            <SelectTrigger
+              className={`mt-1.5 ${errors.reason ? "border-rose-500 focus:ring-rose-500" : ""}`}
+            >
+              <SelectValue placeholder="Select a reason" />
+            </SelectTrigger>
+            <SelectContent>
+              {REASON_OPTIONS.map((r) => (
+                <SelectItem key={r} value={r}>{r}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {reasonType === "Other" && (
             <Textarea
-              id="return-reason"
-              value={reason}
-              onChange={(e) => { setReason(e.target.value); if (errors.reason) setErrors((x) => ({ ...x, reason: undefined })); }}
-              placeholder="Damaged, wrong item, customer changed mind, etc."
+              value={reasonOther}
+              onChange={(e) => { setReasonOther(e.target.value); if (errors.reason) setErrors((x) => ({ ...x, reason: undefined })); }}
+              placeholder="Describe the reason…"
               rows={3}
-              className={`mt-1.5 ${errors.reason ? "border-rose-500 focus-visible:ring-rose-500" : ""}`}
+              className={`mt-2 ${errors.reason ? "border-rose-500 focus-visible:ring-rose-500" : ""}`}
+              maxLength={500}
             />
-            {errors.reason && <p className="mt-1 text-xs font-medium text-rose-600">{errors.reason}</p>}
-          </div>
-          <div className="rounded-xl border bg-card p-4">
-            <Label htmlFor="return-notes">Internal notes <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
-            <Textarea
-              id="return-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any additional context for the team — condition, refund method, etc."
-              rows={3}
-              className="mt-1.5"
-              maxLength={1000}
-            />
-            <p className="mt-1 text-[11px] text-muted-foreground">{notes.length}/1000</p>
-          </div>
+          )}
+          {errors.reason && <p className="mt-1 text-xs font-medium text-rose-600">{errors.reason}</p>}
         </div>
         <div className="rounded-xl border bg-card p-4 h-fit sticky top-4">
           <div className="flex items-center justify-between text-sm">

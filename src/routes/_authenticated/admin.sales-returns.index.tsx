@@ -191,16 +191,16 @@ function SalesReturnsPage() {
               {isLoading ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i} className="border-t">
-                    <td colSpan={8} className="px-4 py-3"><div className="h-6 animate-pulse rounded bg-muted" /></td>
+                    <td colSpan={9} className="px-4 py-3"><div className="h-6 animate-pulse rounded bg-muted" /></td>
                   </tr>
                 ))
               ) : isError ? (
-                <tr><td colSpan={8} className="px-4 py-12 text-center">
+                <tr><td colSpan={9} className="px-4 py-12 text-center">
                   <p className="mb-2 text-sm text-destructive">Failed to load returns.</p>
                   <Button size="sm" variant="outline" onClick={() => refetch()}>Retry</Button>
                 </td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="px-4 py-16">
+                <tr><td colSpan={9} className="px-4 py-16">
                   <div className="flex flex-col items-center gap-3 text-center">
                     <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">
                       <Undo2 className="h-7 w-7 text-muted-foreground" />
@@ -231,6 +231,14 @@ function SalesReturnsPage() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtDate(r.return_date)}</td>
                     <td className="px-4 py-3 font-medium">{r.customer || <span className="text-muted-foreground">Walk-in</span>}</td>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center gap-1.5 text-xs">
+                        <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                          {(r.creator_name ?? "S").slice(0, 1).toUpperCase()}
+                        </span>
+                        <span className="font-medium">{r.creator_name ?? <span className="text-muted-foreground">System</span>}</span>
+                      </span>
+                    </td>
                     <td className="px-4 py-3"><StatusPill status={r.status ?? "completed"} /></td>
                     <td className="px-4 py-3 text-right tabular-nums">{items.length}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{qty}</td>

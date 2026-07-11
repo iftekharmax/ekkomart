@@ -353,7 +353,12 @@ function SalesReturnsPage() {
               onClick={(e) => {
                 e.preventDefault();
                 const reason = voidReason.trim();
-                if (reason.length < 3) { setVoidError("Please provide a reason (min 3 characters)"); return; }
+                if (reason.length < 3) {
+                  const msg = "Please provide a reason (min 3 characters)";
+                  setVoidError(msg);
+                  toast.error(msg);
+                  return;
+                }
                 if (confirmVoid) voidIt.mutate({ id: confirmVoid.id, reason });
               }}
               className="bg-amber-600 text-white hover:bg-amber-700"

@@ -410,6 +410,9 @@ function ReturnDetailModal({
       reason: header.reason,
       notes: header.notes,
       status: header.status,
+      staff: header.creator_name,
+      voided_by_name: header.voider_name,
+      voided_at: header.voided_at,
       items: items.map((it) => ({
         name: `${it.product?.name ?? "—"}${it.variation?.name ? " · " + it.variation.name : ""}`,
         qty: Number(it.quantity),

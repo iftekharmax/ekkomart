@@ -519,7 +519,7 @@ function ReturnDetailModal({
                       icon={<CheckCircle2 className="h-3.5 w-3.5" />}
                       color="bg-emerald-500"
                       title="Return created"
-                      subtitle={`by ${short(header.created_by)} · stock restored`}
+                      subtitle={`by ${header.creator_name ?? "System"} · stock restored`}
                       time={header.created_at}
                     />
                     {voided ? (
@@ -528,8 +528,8 @@ function ReturnDetailModal({
                         color="bg-amber-500"
                         title="Return voided"
                         subtitle={header.void_reason
-                          ? `by ${short(header.voided_by)} · reason: ${header.void_reason}`
-                          : `by ${short(header.voided_by)}`}
+                          ? `by ${header.voider_name ?? "System"} · reason: ${header.void_reason}`
+                          : `by ${header.voider_name ?? "System"}`}
                         time={header.voided_at ?? header.updated_at}
                       />
                     ) : (

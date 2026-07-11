@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -9,21 +9,20 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Pencil, Plus, Trash2, Search, Package, AlertTriangle, CheckCircle2,
-  ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, X,
-  TrendingDown, TrendingUp, Minus, ExternalLink,
+  ChevronLeft, ChevronRight, X, TrendingDown, TrendingUp, Minus, Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/products/")({ component: ProductsListPage });
 
-type SortKey = "name" | "stock" | "price" | "status";
-type SortDir = "asc" | "desc";
-type StockFilter = "all" | "in" | "low" | "out";
+type StockStatus = "in" | "low" | "out";
+type StockFilter = "all" | StockStatus;
 const PAGE_SIZE = 10;
+const STATUS_ORDER: Record<StockStatus, number> = { out: 0, low: 1, in: 2 };
 
 function ProductsListPage() {
   const qc = useQueryClient();
@@ -32,16 +31,27 @@ function ProductsListPage() {
   const varsFn = useServerFn(listAllVariations);
   const deleteFn = useServerFn(deleteProduct);
 
+  const [qInput, setQInput] = useState("");
   const [q, setQ] = useState("");
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
   const [category, setCategory] = useState<string>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("name");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "status">("status");
   const [page, setPage] = useState(1);
   const [detailId, setDetailId] = useState<string | null>(null);
 
-  const { data: products = [] } = useQuery({ queryKey: ["admin-products"], queryFn: () => listFn() });
-  const { data: variations = [] } = useQuery({ queryKey: ["admin-all-variations"], queryFn: () => varsFn() });
+  // Debounce search input
+  useEffect(() => {
+    const t = setTimeout(() => { setQ(qInput); setPage(1); }, 250);
+    return () => clearTimeout(t);
+  }, [qInput]);
+
+  const { data: products = [], isLoading: pLoading } = useQuery({
+    queryKey: ["admin-products"], queryFn: () => listFn(),
+  });
+  const { data: variations = [], isLoading: vLoading } = useQuery({
+    queryKey: ["admin-all-variations"], queryFn: () => varsFn(),
+  });
+  const isLoading = pLoading || vLoading;
 
   const stockByProduct = useMemo(() => {
     const m = new Map<string, number>();
@@ -63,7 +73,7 @@ function ProductsListPage() {
     return (products as any[]).map((p) => {
       const stock = p.product_type === "variable" ? (stockByProduct.get(p.id) ?? 0) : Number(p.stock ?? 0);
       const threshold = Number(p.low_stock_alert ?? 5);
-      const status: "in" | "low" | "out" = stock <= 0 ? "out" : stock <= threshold ? "low" : "in";
+      const status: StockStatus = stock <= 0 ? "out" : stock <= threshold ? "low" : "in";
       return { ...p, _stock: stock, _threshold: threshold, _status: status };
     });
   }, [products, stockByProduct]);
@@ -93,20 +103,13 @@ function ProductsListPage() {
       if (category !== "all" && p.category !== category) return false;
       return true;
     });
-    const dir = sortDir === "asc" ? 1 : -1;
     list.sort((a, b) => {
-      switch (sortKey) {
-        case "name": return a.name.localeCompare(b.name) * dir;
-        case "stock": return (a._stock - b._stock) * dir;
-        case "price": return (Number(a.price) - Number(b.price)) * dir;
-        case "status": {
-          const order = { out: 0, low: 1, in: 2 } as const;
-          return (order[a._status as keyof typeof order] - order[b._status as keyof typeof order]) * dir;
-        }
-      }
+      if (sortBy === "price-asc") return Number(a.price) - Number(b.price);
+      if (sortBy === "price-desc") return Number(b.price) - Number(a.price);
+      return STATUS_ORDER[a._status as StockStatus] - STATUS_ORDER[b._status as StockStatus];
     });
     return list;
-  }, [withStock, q, stockFilter, category, sortKey, sortDir]);
+  }, [withStock, q, stockFilter, category, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -114,14 +117,8 @@ function ProductsListPage() {
 
   const detail = detailId ? withStock.find((p) => p.id === detailId) : null;
 
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
-    else { setSortKey(key); setSortDir("asc"); }
-    setPage(1);
-  };
-
   const resetFilters = () => {
-    setQ(""); setStockFilter("all"); setCategory("all"); setPage(1);
+    setQInput(""); setQ(""); setStockFilter("all"); setCategory("all"); setPage(1);
   };
   const hasFilters = q || stockFilter !== "all" || category !== "all";
 
@@ -148,19 +145,19 @@ function ProductsListPage() {
           active={stockFilter === "out"} onClick={() => { setStockFilter("out"); setPage(1); }} />
       </div>
 
-      {/* Modern search + filter bar */}
       <div className="flex flex-wrap items-center gap-2 rounded-2xl border bg-card p-2 shadow-sm">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Search by name, SKU, barcode, brand…"
-            value={q}
-            onChange={(e) => { setQ(e.target.value); setPage(1); }}
+            placeholder="Search by name, barcode, brand, category…"
+            value={qInput}
+            onChange={(e) => setQInput(e.target.value)}
             className="h-10 rounded-xl border-0 bg-muted/40 pl-9 pr-9 focus-visible:ring-1"
+            aria-label="Search products"
           />
-          {q && (
+          {qInput && (
             <button
-              onClick={() => setQ("")}
+              onClick={() => setQInput("")}
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-muted"
               aria-label="Clear search"
             >
@@ -175,19 +172,12 @@ function ProductsListPage() {
             {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={`${sortKey}:${sortDir}`} onValueChange={(v) => {
-          const [k, d] = v.split(":") as [SortKey, SortDir];
-          setSortKey(k); setSortDir(d); setPage(1);
-        }}>
+        <Select value={sortBy} onValueChange={(v) => { setSortBy(v as typeof sortBy); setPage(1); }}>
           <SelectTrigger className="h-10 w-[180px] rounded-xl border-0 bg-muted/40"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="name:asc">Name A → Z</SelectItem>
-            <SelectItem value="name:desc">Name Z → A</SelectItem>
-            <SelectItem value="stock:asc">Stock: low → high</SelectItem>
-            <SelectItem value="stock:desc">Stock: high → low</SelectItem>
-            <SelectItem value="price:asc">Price: low → high</SelectItem>
-            <SelectItem value="price:desc">Price: high → low</SelectItem>
-            <SelectItem value="status:asc">Status: urgent first</SelectItem>
+            <SelectItem value="status">Status: urgent first</SelectItem>
+            <SelectItem value="price-asc">Price: low → high</SelectItem>
+            <SelectItem value="price-desc">Price: high → low</SelectItem>
           </SelectContent>
         </Select>
         {hasFilters && (
@@ -202,17 +192,34 @@ function ProductsListPage() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
               <tr>
-                <th className="px-4 py-3"><SortHead label="Product" active={sortKey === "name"} dir={sortDir} onClick={() => toggleSort("name")} /></th>
-                <th className="px-4 py-3">SKU</th>
+                <th className="px-4 py-3">Product</th>
+                <th className="px-4 py-3">Barcode</th>
                 <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3 text-right"><SortHead label="Price" active={sortKey === "price"} dir={sortDir} onClick={() => toggleSort("price")} align="right" /></th>
-                <th className="px-4 py-3 text-right"><SortHead label="Stock" active={sortKey === "stock"} dir={sortDir} onClick={() => toggleSort("stock")} align="right" /></th>
-                <th className="px-4 py-3"><SortHead label="Status" active={sortKey === "status"} dir={sortDir} onClick={() => toggleSort("status")} /></th>
-                <th className="px-4 py-3"></th>
+                <th className="px-4 py-3 text-right">Price</th>
+                <th className="px-4 py-3 text-right">Stock</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {pageItems.map((p) => {
+              {isLoading && Array.from({ length: 6 }).map((_, i) => (
+                <tr key={`sk-${i}`} className="border-t">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="h-11 w-11 animate-pulse rounded-lg bg-muted" />
+                      <div className="space-y-1.5">
+                        <div className="h-3 w-40 animate-pulse rounded bg-muted" />
+                        <div className="h-2.5 w-24 animate-pulse rounded bg-muted" />
+                      </div>
+                    </div>
+                  </td>
+                  {Array.from({ length: 6 }).map((__, j) => (
+                    <td key={j} className="px-4 py-3"><div className="h-3 w-16 animate-pulse rounded bg-muted" /></td>
+                  ))}
+                </tr>
+              ))}
+
+              {!isLoading && pageItems.map((p) => {
                 const isUrgent = p._status !== "in";
                 return (
                   <tr
@@ -240,7 +247,7 @@ function ProductsListPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{p.sku ?? "—"}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{p.barcode ?? "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {p.category ?? "—"}{p.subcategory ? ` / ${p.subcategory}` : ""}
                     </td>
@@ -252,30 +259,45 @@ function ProductsListPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3"><StatusBadge status={p._status} /></td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-end gap-1 opacity-70 transition group-hover:opacity-100">
-                        <Link to="/admin/products/$id/edit" params={{ id: p.id }} className="rounded-md p-2 hover:bg-muted">
-                          <Pencil className="h-4 w-4 text-muted-foreground" />
+                    <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setDetailId(p.id)} aria-label="View product">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Link to="/admin/products/$id/edit" params={{ id: p.id }}>
+                          <Button size="sm" variant="outline" aria-label="Edit product"><Pencil className="h-4 w-4" /></Button>
                         </Link>
-                        <button
-                          onClick={() => confirm("Delete this product?") && deleteM.mutate(p.id)}
-                          className="rounded-md p-2 hover:bg-destructive/10"
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          aria-label="Delete product"
+                          onClick={() => { if (confirm("Delete this product?")) deleteM.mutate(p.id); }}
                         >
-                          <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-                        </button>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
                 );
               })}
-              {pageItems.length === 0 && (
+
+              {!isLoading && pageItems.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-16 text-center">
                     <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground">
                       <Package className="h-5 w-5" />
                     </div>
-                    <p className="mt-3 text-sm font-medium">No products found</p>
-                    <p className="text-xs text-muted-foreground">Try changing your search or filters.</p>
+                    <p className="mt-3 text-sm font-medium">
+                      {hasFilters ? "No products match your search" : "No products yet"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {hasFilters ? "Try adjusting your search or filters." : "Add your first product to get started."}
+                    </p>
+                    {hasFilters && (
+                      <Button variant="outline" size="sm" className="mt-4 rounded-full" onClick={resetFilters}>
+                        <X className="mr-1 h-4 w-4" /> Clear filters
+                      </Button>
+                    )}
                   </td>
                 </tr>
               )}
@@ -283,7 +305,7 @@ function ProductsListPage() {
           </table>
         </div>
 
-        {filtered.length > 0 && (
+        {!isLoading && filtered.length > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t bg-muted/20 px-4 py-3 text-sm">
             <div className="text-muted-foreground">
               Showing <span className="font-medium text-foreground">{(safePage - 1) * PAGE_SIZE + 1}</span>
@@ -291,11 +313,11 @@ function ProductsListPage() {
               {" "}of <span className="font-medium text-foreground">{filtered.length}</span>
             </div>
             <div className="flex items-center gap-1">
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage === 1} onClick={() => setPage(safePage - 1)}>
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage === 1} onClick={() => setPage(safePage - 1)} aria-label="Previous page">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <div className="px-2 text-xs text-muted-foreground">Page {safePage} / {totalPages}</div>
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage === totalPages} onClick={() => setPage(safePage + 1)}>
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled={safePage === totalPages} onClick={() => setPage(safePage + 1)} aria-label="Next page">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -312,6 +334,7 @@ function ProductsListPage() {
                   {detail.name}
                   <StatusBadge status={detail._status} />
                 </DialogTitle>
+                <DialogDescription>Product details and quick actions.</DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 md:grid-cols-[200px_1fr]">
                 <div className="space-y-2">
@@ -337,8 +360,8 @@ function ProductsListPage() {
                         <span className="tabular-nums font-medium">{detail._stock}</span>
                       </span>
                     } />
-                    <InfoCell label="SKU" value={detail.sku ?? "—"} mono />
                     <InfoCell label="Barcode" value={detail.barcode ?? "—"} mono />
+                    <InfoCell label="SKU" value={detail.sku ?? "—"} mono />
                     <InfoCell label="Category" value={detail.category ?? "—"} />
                     <InfoCell label="Brand" value={detail.brand ?? "—"} />
                     <InfoCell label="Type" value={detail.product_type} />
@@ -351,14 +374,11 @@ function ProductsListPage() {
                     <Button size="sm" onClick={() => navigate({ to: "/admin/products/$id/edit", params: { id: detail.id } })}>
                       <Pencil className="mr-1 h-4 w-4" /> Edit
                     </Button>
-                    <Link to="/products/$productId" params={{ productId: detail.id }} target="_blank">
-                      <Button size="sm" variant="outline"><ExternalLink className="mr-1 h-4 w-4" /> View</Button>
-                    </Link>
                     <Button
                       size="sm"
                       variant="ghost"
                       className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() => confirm("Delete this product?") && deleteM.mutate(detail.id)}
+                      onClick={() => { if (confirm("Delete this product?")) deleteM.mutate(detail.id); }}
                     >
                       <Trash2 className="mr-1 h-4 w-4" /> Delete
                     </Button>
@@ -373,28 +393,17 @@ function ProductsListPage() {
   );
 }
 
-function SortHead({ label, active, dir, onClick, align }: { label: string; active: boolean; dir: SortDir; onClick: () => void; align?: "right" }) {
-  const Icon = !active ? ArrowUpDown : dir === "asc" ? ArrowUp : ArrowDown;
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center gap-1 hover:text-foreground ${active ? "text-foreground" : ""} ${align === "right" ? "flex-row-reverse" : ""}`}
-    >
-      {label}<Icon className="h-3 w-3" />
-    </button>
-  );
-}
-
-function StatusBadge({ status }: { status: "in" | "low" | "out" }) {
-  const map = {
+function StatusBadge({ status }: { status: StockStatus }) {
+  const map: Record<StockStatus, { cls: string; label: string }> = {
     in:  { cls: "bg-emerald-50 text-emerald-700 ring-emerald-200", label: "In stock" },
     low: { cls: "bg-amber-50 text-amber-700 ring-amber-200", label: "Low stock" },
     out: { cls: "bg-rose-50 text-rose-700 ring-rose-200", label: "Out of stock" },
-  }[status];
-  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${map.cls}`}>{map.label}</span>;
+  };
+  const m = map[status];
+  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${m.cls}`}>{m.label}</span>;
 }
 
-function StockTrend({ status }: { status: "in" | "low" | "out" }) {
+function StockTrend({ status }: { status: StockStatus }) {
   if (status === "out") return <TrendingDown className="h-3.5 w-3.5 text-rose-600" />;
   if (status === "low") return <Minus className="h-3.5 w-3.5 text-amber-600" />;
   return <TrendingUp className="h-3.5 w-3.5 text-emerald-600" />;
@@ -416,18 +425,18 @@ function StatCard({
   tone: "muted" | "emerald" | "amber" | "rose";
   active: boolean; onClick: () => void;
 }) {
-  const toneCls = {
+  const toneCls: Record<"muted" | "emerald" | "amber" | "rose", string> = {
     muted: "bg-muted text-foreground",
     emerald: "bg-emerald-100 text-emerald-700",
     amber: "bg-amber-100 text-amber-700",
     rose: "bg-rose-100 text-rose-700",
-  }[tone];
+  };
   return (
     <button
       onClick={onClick}
       className={`flex items-center gap-3 rounded-2xl border bg-card p-4 text-left transition hover:shadow-sm ${active ? "ring-2 ring-primary" : ""}`}
     >
-      <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${toneCls}`}>
+      <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${toneCls[tone]}`}>
         <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0">

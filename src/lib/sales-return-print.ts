@@ -8,6 +8,9 @@ export type ReturnReceipt = {
   reason?: string | null;
   notes?: string | null;
   status?: string;
+  staff?: string | null;
+  voided_by_name?: string | null;
+  voided_at?: string | null;
   items: Item[];
   subtotal: number;
   total: number;

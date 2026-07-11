@@ -53,6 +53,7 @@ const NAV: NavItem[] = [
     icon: Undo2,
     children: [
       { to: "/admin/purchase-returns", label: "Purchase Return", icon: Undo2 },
+      { to: "/admin/sales-returns", label: "Sales Return", icon: Undo2 },
     ],
   },
   { to: "/admin/stock-adjustments", label: "Stock Adjustments", icon: SlidersHorizontal },

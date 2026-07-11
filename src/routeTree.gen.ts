@@ -46,6 +46,7 @@ import { Route as AuthenticatedAdminSuppliersNewRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminSubcategoriesNewRouteImport } from './routes/_authenticated/admin.subcategories.new'
 import { Route as AuthenticatedAdminSalesIdRouteImport } from './routes/_authenticated/admin.sales.$id'
 import { Route as AuthenticatedAdminSalesReturnsNewRouteImport } from './routes/_authenticated/admin.sales-returns.new'
+import { Route as AuthenticatedAdminSalesReturnsIdRouteImport } from './routes/_authenticated/admin.sales-returns.$id'
 import { Route as AuthenticatedAdminPurchasesNewRouteImport } from './routes/_authenticated/admin.purchases.new'
 import { Route as AuthenticatedAdminPurchasesIdRouteImport } from './routes/_authenticated/admin.purchases.$id'
 import { Route as AuthenticatedAdminPurchaseReturnsNewRouteImport } from './routes/_authenticated/admin.purchase-returns.new'
@@ -263,6 +264,12 @@ const AuthenticatedAdminSalesReturnsNewRoute =
     path: '/sales-returns/new',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminSalesReturnsIdRoute =
+  AuthenticatedAdminSalesReturnsIdRouteImport.update({
+    id: '/sales-returns/$id',
+    path: '/sales-returns/$id',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminPurchasesNewRoute =
   AuthenticatedAdminPurchasesNewRouteImport.update({
     id: '/purchases/new',
@@ -383,6 +390,7 @@ export interface FileRoutesByFullPath {
   '/admin/purchase-returns/new': typeof AuthenticatedAdminPurchaseReturnsNewRoute
   '/admin/purchases/$id': typeof AuthenticatedAdminPurchasesIdRoute
   '/admin/purchases/new': typeof AuthenticatedAdminPurchasesNewRoute
+  '/admin/sales-returns/$id': typeof AuthenticatedAdminSalesReturnsIdRoute
   '/admin/sales-returns/new': typeof AuthenticatedAdminSalesReturnsNewRoute
   '/admin/sales/$id': typeof AuthenticatedAdminSalesIdRoute
   '/admin/subcategories/new': typeof AuthenticatedAdminSubcategoriesNewRoute
@@ -435,6 +443,7 @@ export interface FileRoutesByTo {
   '/admin/purchase-returns/new': typeof AuthenticatedAdminPurchaseReturnsNewRoute
   '/admin/purchases/$id': typeof AuthenticatedAdminPurchasesIdRoute
   '/admin/purchases/new': typeof AuthenticatedAdminPurchasesNewRoute
+  '/admin/sales-returns/$id': typeof AuthenticatedAdminSalesReturnsIdRoute
   '/admin/sales-returns/new': typeof AuthenticatedAdminSalesReturnsNewRoute
   '/admin/sales/$id': typeof AuthenticatedAdminSalesIdRoute
   '/admin/subcategories/new': typeof AuthenticatedAdminSubcategoriesNewRoute
@@ -490,6 +499,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/purchase-returns/new': typeof AuthenticatedAdminPurchaseReturnsNewRoute
   '/_authenticated/admin/purchases/$id': typeof AuthenticatedAdminPurchasesIdRoute
   '/_authenticated/admin/purchases/new': typeof AuthenticatedAdminPurchasesNewRoute
+  '/_authenticated/admin/sales-returns/$id': typeof AuthenticatedAdminSalesReturnsIdRoute
   '/_authenticated/admin/sales-returns/new': typeof AuthenticatedAdminSalesReturnsNewRoute
   '/_authenticated/admin/sales/$id': typeof AuthenticatedAdminSalesIdRoute
   '/_authenticated/admin/subcategories/new': typeof AuthenticatedAdminSubcategoriesNewRoute
@@ -545,6 +555,7 @@ export interface FileRouteTypes {
     | '/admin/purchase-returns/new'
     | '/admin/purchases/$id'
     | '/admin/purchases/new'
+    | '/admin/sales-returns/$id'
     | '/admin/sales-returns/new'
     | '/admin/sales/$id'
     | '/admin/subcategories/new'
@@ -597,6 +608,7 @@ export interface FileRouteTypes {
     | '/admin/purchase-returns/new'
     | '/admin/purchases/$id'
     | '/admin/purchases/new'
+    | '/admin/sales-returns/$id'
     | '/admin/sales-returns/new'
     | '/admin/sales/$id'
     | '/admin/subcategories/new'
@@ -651,6 +663,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/purchase-returns/new'
     | '/_authenticated/admin/purchases/$id'
     | '/_authenticated/admin/purchases/new'
+    | '/_authenticated/admin/sales-returns/$id'
     | '/_authenticated/admin/sales-returns/new'
     | '/_authenticated/admin/sales/$id'
     | '/_authenticated/admin/subcategories/new'
@@ -952,6 +965,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminSalesReturnsNewRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/sales-returns/$id': {
+      id: '/_authenticated/admin/sales-returns/$id'
+      path: '/sales-returns/$id'
+      fullPath: '/admin/sales-returns/$id'
+      preLoaderRoute: typeof AuthenticatedAdminSalesReturnsIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/purchases/new': {
       id: '/_authenticated/admin/purchases/new'
       path: '/purchases/new'
@@ -1088,6 +1108,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminPurchaseReturnsNewRoute: typeof AuthenticatedAdminPurchaseReturnsNewRoute
   AuthenticatedAdminPurchasesIdRoute: typeof AuthenticatedAdminPurchasesIdRoute
   AuthenticatedAdminPurchasesNewRoute: typeof AuthenticatedAdminPurchasesNewRoute
+  AuthenticatedAdminSalesReturnsIdRoute: typeof AuthenticatedAdminSalesReturnsIdRoute
   AuthenticatedAdminSalesReturnsNewRoute: typeof AuthenticatedAdminSalesReturnsNewRoute
   AuthenticatedAdminSubcategoriesNewRoute: typeof AuthenticatedAdminSubcategoriesNewRoute
   AuthenticatedAdminSuppliersNewRoute: typeof AuthenticatedAdminSuppliersNewRoute
@@ -1128,6 +1149,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
     AuthenticatedAdminPurchaseReturnsNewRoute,
   AuthenticatedAdminPurchasesIdRoute: AuthenticatedAdminPurchasesIdRoute,
   AuthenticatedAdminPurchasesNewRoute: AuthenticatedAdminPurchasesNewRoute,
+  AuthenticatedAdminSalesReturnsIdRoute: AuthenticatedAdminSalesReturnsIdRoute,
   AuthenticatedAdminSalesReturnsNewRoute:
     AuthenticatedAdminSalesReturnsNewRoute,
   AuthenticatedAdminSubcategoriesNewRoute:

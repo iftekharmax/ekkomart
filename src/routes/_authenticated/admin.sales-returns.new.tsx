@@ -41,8 +41,10 @@ function NewReturnPage() {
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [reference, setReference] = useState("");
   const [reason, setReason] = useState("");
+  const [notes, setNotes] = useState("");
   const [customer, setCustomer] = useState("");
   const [items, setItems] = useState<Line[]>([]);
+  const [errors, setErrors] = useState<{ reason?: string; items?: string }>({});
 
   const filteredSales = useMemo(() => {
     const q = saleSearch.trim().toLowerCase();

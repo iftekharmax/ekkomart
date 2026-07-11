@@ -413,25 +413,25 @@ function ReturnDetailModal({
 
   return (
     <Dialog open={!!id} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-0 sm:rounded-2xl">
         <DialogHeader className="sr-only"><DialogTitle>Sales return details</DialogTitle></DialogHeader>
         {isLoading || !header ? (
           <div className="p-8"><div className="h-40 animate-pulse rounded bg-muted" /></div>
         ) : (
           <div>
             {/* header */}
-            <div className={`flex items-start justify-between gap-3 border-b p-5 ${voided ? "bg-muted/30" : "bg-gradient-to-br from-primary/5 to-transparent"}`}>
-              <div>
-                <div className="flex items-center gap-2">
+            <div className={`flex flex-col gap-4 border-b p-5 sm:flex-row sm:items-start sm:justify-between ${voided ? "bg-muted/30" : "bg-gradient-to-br from-primary/5 to-transparent"}`}>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
                     {header.reference}
                   </span>
                   <StatusPill status={header.status ?? "completed"} />
                 </div>
-                <h2 className="mt-2 text-xl font-bold">{header.customer || "Walk-in customer"}</h2>
+                <h2 className="mt-2 truncate text-xl font-bold">{header.customer || "Walk-in customer"}</h2>
                 <p className="text-xs text-muted-foreground">Return date · {fmtDate(header.return_date)}</p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 sm:justify-end">
                 <Button size="sm" variant="outline" onClick={handlePrint}>
                   <Printer className="mr-1 h-4 w-4" />Print
                 </Button>

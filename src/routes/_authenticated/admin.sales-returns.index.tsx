@@ -565,6 +565,7 @@ function ReturnDetailModal({
                 </div>
               </aside>
             </div>
+            </div>
           </div>
         )}
       </DialogContent>

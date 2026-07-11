@@ -102,7 +102,11 @@ function SalesReturnsPage() {
       qc.invalidateQueries({ queryKey: ["admin-sales-returns"] });
       if (detailId) qc.invalidateQueries({ queryKey: ["admin-sales-return", detailId] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      // Keep the dialog open so the user can correct and retry
+      setVoidError(e.message || "Failed to void return");
+      toast.error(e.message || "Failed to void return");
+    },
   });
 
   const clearAll = () => { setQ(""); setStatus("all"); setFrom(""); setTo(""); setPage(1); };

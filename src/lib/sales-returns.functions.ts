@@ -45,7 +45,18 @@ export const listSalesReturns = createServerFn({ method: "GET" })
       .select("*, items:sales_return_items(id,quantity,line_total,product:products(name),variation:product_variations(name))")
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return data ?? [];
+    const rows = (data ?? []) as any[];
+    const ids = Array.from(new Set(rows.flatMap((r) => [r.created_by, r.voided_by]).filter(Boolean))) as string[];
+    const nameMap = new Map<string, string>();
+    if (ids.length) {
+      const { data: profs } = await context.supabase.from("profiles").select("id,full_name").in("id", ids);
+      for (const p of (profs ?? []) as any[]) nameMap.set(p.id, p.full_name);
+    }
+    return rows.map((r) => ({
+      ...r,
+      creator_name: r.created_by ? nameMap.get(r.created_by) ?? null : null,
+      voider_name: r.voided_by ? nameMap.get(r.voided_by) ?? null : null,
+    }));
   });
 
 export const getSalesReturn = createServerFn({ method: "GET" })
@@ -57,6 +68,14 @@ export const getSalesReturn = createServerFn({ method: "GET" })
       .select("*")
       .eq("id", data.id).single();
     if (error) throw new Error(error.message);
+    const ids = [header.created_by, header.voided_by].filter(Boolean) as string[];
+    const nameMap = new Map<string, string>();
+    if (ids.length) {
+      const { data: profs } = await context.supabase.from("profiles").select("id,full_name").in("id", ids);
+      for (const p of (profs ?? []) as any[]) nameMap.set(p.id, p.full_name);
+    }
+    (header as any).creator_name = header.created_by ? nameMap.get(header.created_by) ?? null : null;
+    (header as any).voider_name = header.voided_by ? nameMap.get(header.voided_by) ?? null : null;
     const { data: items, error: e2 } = await (context.supabase.from("sales_return_items" as any) as any)
       .select("*, product:products(id,name,unit), variation:product_variations(id,name)")
       .eq("return_id", data.id);

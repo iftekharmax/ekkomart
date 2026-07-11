@@ -74,11 +74,7 @@ export const getSalesReturn = createServerFn({ method: "GET" })
       .eq("id", data.id).single();
     if (error) throw new Error(error.message);
     const ids = [header.created_by, header.voided_by].filter(Boolean) as string[];
-    const nameMap = new Map<string, string>();
-    if (ids.length) {
-      const { data: profs } = await context.supabase.from("profiles").select("id,full_name").in("id", ids);
-      for (const p of (profs ?? []) as any[]) nameMap.set(p.id, p.full_name);
-    }
+    const nameMap = await loadNameMap(ids);
     (header as any).creator_name = header.created_by ? nameMap.get(header.created_by) ?? null : null;
     (header as any).voider_name = header.voided_by ? nameMap.get(header.voided_by) ?? null : null;
     const { data: items, error: e2 } = await (context.supabase.from("sales_return_items" as any) as any)

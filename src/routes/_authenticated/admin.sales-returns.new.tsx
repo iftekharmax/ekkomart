@@ -245,20 +245,45 @@ function NewReturnPage() {
       </div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="rounded-xl border bg-card p-4">
-          <Label>Reason / note</Label>
-          <Textarea value={reason} onChange={(e) => setReason(e.target.value)}
-            placeholder="Damaged, wrong item, customer changed mind, etc." rows={4} />
+        <div className="space-y-4">
+          <div className="rounded-xl border bg-card p-4">
+            <Label htmlFor="return-reason" className="flex items-center gap-1">
+              Return reason <span className="text-rose-600">*</span>
+            </Label>
+            <Textarea
+              id="return-reason"
+              value={reason}
+              onChange={(e) => { setReason(e.target.value); if (errors.reason) setErrors((x) => ({ ...x, reason: undefined })); }}
+              placeholder="Damaged, wrong item, customer changed mind, etc."
+              rows={3}
+              className={`mt-1.5 ${errors.reason ? "border-rose-500 focus-visible:ring-rose-500" : ""}`}
+            />
+            {errors.reason && <p className="mt-1 text-xs font-medium text-rose-600">{errors.reason}</p>}
+          </div>
+          <div className="rounded-xl border bg-card p-4">
+            <Label htmlFor="return-notes">Internal notes <span className="text-xs font-normal text-muted-foreground">(optional)</span></Label>
+            <Textarea
+              id="return-notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any additional context for the team — condition, refund method, etc."
+              rows={3}
+              className="mt-1.5"
+              maxLength={1000}
+            />
+            <p className="mt-1 text-[11px] text-muted-foreground">{notes.length}/1000</p>
+          </div>
         </div>
-        <div className="rounded-xl border bg-card p-4">
+        <div className="rounded-xl border bg-card p-4 h-fit sticky top-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Subtotal</span>
             <span className="font-semibold">৳{subtotal.toFixed(2)}</span>
           </div>
           <div className="mt-1 flex items-center justify-between border-t pt-2 text-base">
             <span className="font-semibold">Total refund</span>
-            <span className="font-bold">৳{subtotal.toFixed(2)}</span>
+            <span className="font-bold text-primary">৳{subtotal.toFixed(2)}</span>
           </div>
+          {errors.items && <p className="mt-2 text-xs font-medium text-rose-600">{errors.items}</p>}
           <Button className="mt-4 w-full" disabled={create.isPending} onClick={() => create.mutate()}>
             {create.isPending ? "Saving..." : "Create return"}
           </Button>

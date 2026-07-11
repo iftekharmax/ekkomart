@@ -441,7 +441,10 @@ function ReturnDetailModal({
                   <StatusPill status={header.status ?? "completed"} />
                 </div>
                 <h2 className="mt-2 truncate text-xl font-bold">{header.customer || "Walk-in customer"}</h2>
-                <p className="text-xs text-muted-foreground">Return date · {fmtDate(header.return_date)}</p>
+                <p className="text-xs text-muted-foreground">
+                  Return date · {fmtDate(header.return_date)} · Processed by{" "}
+                  <span className="font-semibold text-foreground">{header.creator_name ?? "System"}</span>
+                </p>
               </div>
               <div className="flex flex-wrap gap-2 sm:justify-end">
                 <Button size="sm" variant="outline" onClick={handlePrint}>

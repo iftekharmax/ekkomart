@@ -432,21 +432,19 @@ function ReturnDetailModal({
         ) : (
           <div>
             {/* header */}
-            <div className={`flex flex-col gap-4 border-b p-5 sm:flex-row sm:items-start sm:justify-between ${voided ? "bg-muted/30" : "bg-gradient-to-br from-primary/5 to-transparent"}`}>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
-                    {header.reference}
-                  </span>
-                  <StatusPill status={header.status ?? "completed"} />
-                </div>
-                <h2 className="mt-2 truncate text-xl font-bold">{header.customer || "Walk-in customer"}</h2>
-                <p className="text-xs text-muted-foreground">
-                  Return date · {fmtDate(header.return_date)} · Processed by{" "}
-                  <span className="font-semibold text-foreground">{header.creator_name ?? "System"}</span>
-                </p>
+            <div className={`border-b p-5 pr-12 ${voided ? "bg-muted/30" : "bg-gradient-to-br from-primary/5 to-transparent"}`}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+                  {header.reference}
+                </span>
+                <StatusPill status={header.status ?? "completed"} />
               </div>
-              <div className="flex flex-wrap gap-2 sm:justify-end">
+              <h2 className="mt-2 truncate text-xl font-bold">{header.customer || "Walk-in customer"}</h2>
+              <p className="text-xs text-muted-foreground">
+                Return date · {fmtDate(header.return_date)} · Processed by{" "}
+                <span className="font-semibold text-foreground">{header.creator_name ?? "System"}</span>
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={handlePrint}>
                   <Printer className="mr-1 h-4 w-4" />Print
                 </Button>

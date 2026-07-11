@@ -3,20 +3,24 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  listSalesReturns, deleteSalesReturn, voidSalesReturn,
+  listSalesReturns, deleteSalesReturn, voidSalesReturn, getSalesReturn,
 } from "@/lib/sales-returns.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Eye, Trash2, Search, Undo2, Ban, Calendar, X, TrendingUp, ShoppingBag, Plus,
-  ChevronLeft, ChevronRight, Loader2, Receipt,
+  ChevronLeft, ChevronRight, Loader2, Receipt, Printer, CheckCircle2, Clock, AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { printSalesReturnReceipt } from "@/lib/sales-return-print";
 
 export const Route = createFileRoute("/_authenticated/admin/sales-returns/")({
   head: () => ({ meta: [{ title: "Sales Returns — Admin" }] }),
@@ -26,6 +30,7 @@ export const Route = createFileRoute("/_authenticated/admin/sales-returns/")({
 const PAGE_SIZE = 15;
 const money = (n: number) => `৳${(Number(n) || 0).toFixed(2)}`;
 const fmtDate = (s: string) => new Date(s).toLocaleDateString();
+const fmtDT = (s: string) => new Date(s).toLocaleString();
 
 function SalesReturnsPage() {
   const qc = useQueryClient();
@@ -33,6 +38,7 @@ function SalesReturnsPage() {
   const listFn = useServerFn(listSalesReturns);
   const delFn = useServerFn(deleteSalesReturn);
   const voidFn = useServerFn(voidSalesReturn);
+  const getFn = useServerFn(getSalesReturn);
 
   const { data: rows = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-sales-returns"],
@@ -46,6 +52,9 @@ function SalesReturnsPage() {
   const [page, setPage] = useState(1);
   const [confirmRow, setConfirmRow] = useState<{ id: string; reference: string } | null>(null);
   const [confirmVoid, setConfirmVoid] = useState<{ id: string; reference: string } | null>(null);
+  const [voidReason, setVoidReason] = useState("");
+  const [voidError, setVoidError] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const hasFilters = !!(q || status !== "all" || from || to);
 
@@ -84,11 +93,14 @@ function SalesReturnsPage() {
   });
 
   const voidIt = useMutation({
-    mutationFn: (id: string) => voidFn({ data: { id } }),
+    mutationFn: (vars: { id: string; reason: string }) => voidFn({ data: vars }),
     onSuccess: () => {
-      toast.success("Return voided — stock reverted");
+      toast.success("Sales return voided — stock reverted");
       setConfirmVoid(null);
+      setVoidReason("");
+      setVoidError(null);
       qc.invalidateQueries({ queryKey: ["admin-sales-returns"] });
+      if (detailId) qc.invalidateQueries({ queryKey: ["admin-sales-return", detailId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -223,7 +235,7 @@ function SalesReturnsPage() {
                         <Button
                           size="icon" variant="outline" className="h-8 w-8"
                           title="View details" aria-label="View return"
-                          onClick={() => navigate({ to: "/admin/sales-returns/$id", params: { id: r.id } })}
+                          onClick={() => setDetailId(r.id)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -231,7 +243,7 @@ function SalesReturnsPage() {
                           <Button
                             size="icon" variant="outline" className="h-8 w-8"
                             title="Void return" aria-label="Void return"
-                            onClick={() => setConfirmVoid({ id: r.id, reference: r.reference })}
+                            onClick={() => { setConfirmVoid({ id: r.id, reference: r.reference }); setVoidReason(""); setVoidError(null); }}
                           >
                             <Ban className="h-4 w-4" />
                           </Button>
@@ -275,6 +287,15 @@ function SalesReturnsPage() {
         )}
       </div>
 
+      {/* Detail modal */}
+      <ReturnDetailModal
+        id={detailId}
+        onOpenChange={(o) => !o && setDetailId(null)}
+        getFn={getFn}
+        onVoid={(id, reference) => { setDetailId(null); setConfirmVoid({ id, reference }); setVoidReason(""); setVoidError(null); }}
+        onDelete={(id, reference) => { setDetailId(null); setConfirmRow({ id, reference }); }}
+      />
+
       {/* Delete confirm */}
       <AlertDialog open={!!confirmRow} onOpenChange={(o) => !o && setConfirmRow(null)}>
         <AlertDialogContent>
@@ -297,28 +318,254 @@ function SalesReturnsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Void confirm */}
-      <AlertDialog open={!!confirmVoid} onOpenChange={(o) => !o && setConfirmVoid(null)}>
+      {/* Void confirm w/ reason */}
+      <AlertDialog open={!!confirmVoid} onOpenChange={(o) => { if (!o) { setConfirmVoid(null); setVoidReason(""); setVoidError(null); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Void this return?</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" /> Void this return?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Return <span className="font-mono font-semibold text-foreground">{confirmVoid?.reference}</span> will be marked voided and its stock reverted.
+              Return <span className="font-mono font-semibold text-foreground">{confirmVoid?.reference}</span> will be marked
+              voided and its stock will be reverted from inventory.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <Label htmlFor="void-reason">Reason for voiding <span className="text-rose-600">*</span></Label>
+            <Textarea
+              id="void-reason" rows={3}
+              value={voidReason}
+              onChange={(e) => { setVoidReason(e.target.value); if (voidError) setVoidError(null); }}
+              placeholder="e.g. duplicate entry, customer changed mind, wrong return processed…"
+              className={voidError ? "border-rose-500 focus-visible:ring-rose-500" : ""}
+              autoFocus
+            />
+            {voidError && <p className="text-xs font-medium text-rose-600">{voidError}</p>}
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={voidIt.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               disabled={voidIt.isPending}
-              onClick={(e) => { e.preventDefault(); if (confirmVoid) voidIt.mutate(confirmVoid.id); }}
+              onClick={(e) => {
+                e.preventDefault();
+                const reason = voidReason.trim();
+                if (reason.length < 3) { setVoidError("Please provide a reason (min 3 characters)"); return; }
+                if (confirmVoid) voidIt.mutate({ id: confirmVoid.id, reason });
+              }}
+              className="bg-amber-600 text-white hover:bg-amber-700"
             >
-              {voidIt.isPending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Voiding…</> : "Void"}
+              {voidIt.isPending ? <><Loader2 className="mr-1 h-4 w-4 animate-spin" />Voiding…</> : "Void return"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
+}
+
+function ReturnDetailModal({
+  id, onOpenChange, getFn, onVoid, onDelete,
+}: {
+  id: string | null;
+  onOpenChange: (open: boolean) => void;
+  getFn: (args: { data: { id: string } }) => Promise<any>;
+  onVoid: (id: string, reference: string) => void;
+  onDelete: (id: string, reference: string) => void;
+}) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-sales-return", id],
+    queryFn: () => getFn({ data: { id: id! } }),
+    enabled: !!id,
+  });
+
+  const header = data?.header;
+  const items = (data?.items ?? []) as any[];
+  const voided = header?.status === "voided";
+
+  const handlePrint = () => {
+    if (!header) return;
+    printSalesReturnReceipt({
+      reference: header.reference,
+      return_date: header.return_date,
+      created_at: header.created_at,
+      customer: header.customer,
+      reason: header.reason,
+      notes: header.notes,
+      status: header.status,
+      items: items.map((it) => ({
+        name: `${it.product?.name ?? "—"}${it.variation?.name ? " · " + it.variation.name : ""}`,
+        qty: Number(it.quantity),
+        price: Number(it.unit_price),
+      })),
+      subtotal: Number(header.subtotal),
+      total: Number(header.total),
+    });
+  };
+
+  return (
+    <Dialog open={!!id} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-0">
+        <DialogHeader className="sr-only"><DialogTitle>Sales return details</DialogTitle></DialogHeader>
+        {isLoading || !header ? (
+          <div className="p-8"><div className="h-40 animate-pulse rounded bg-muted" /></div>
+        ) : (
+          <div>
+            {/* header */}
+            <div className={`flex items-start justify-between gap-3 border-b p-5 ${voided ? "bg-muted/30" : "bg-gradient-to-br from-primary/5 to-transparent"}`}>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
+                    {header.reference}
+                  </span>
+                  <StatusPill status={header.status ?? "completed"} />
+                </div>
+                <h2 className="mt-2 text-xl font-bold">{header.customer || "Walk-in customer"}</h2>
+                <p className="text-xs text-muted-foreground">Return date · {fmtDate(header.return_date)}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={handlePrint}>
+                  <Printer className="mr-1 h-4 w-4" />Print
+                </Button>
+                {!voided && (
+                  <Button size="sm" variant="outline" onClick={() => onVoid(header.id, header.reference)}>
+                    <Ban className="mr-1 h-4 w-4" />Void
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" className="text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                  onClick={() => onDelete(header.id, header.reference)}>
+                  <Trash2 className="mr-1 h-4 w-4" />Delete
+                </Button>
+              </div>
+            </div>
+
+            <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_16rem]">
+              <div className="space-y-5">
+                {/* items */}
+                <div className="overflow-hidden rounded-lg border">
+                  <div className="border-b bg-muted/40 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Items ({items.length})
+                  </div>
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/20 text-left">
+                      <tr>
+                        <th className="px-3 py-2 font-semibold">Item</th>
+                        <th className="px-3 py-2 text-right font-semibold">Qty</th>
+                        <th className="px-3 py-2 text-right font-semibold">Unit</th>
+                        <th className="px-3 py-2 text-right font-semibold">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((it) => (
+                        <tr key={it.id} className="border-t">
+                          <td className="px-3 py-2">
+                            {it.product?.name ?? "—"}
+                            {it.variation?.name && <span className="text-muted-foreground"> · {it.variation.name}</span>}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">{it.quantity}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{money(Number(it.unit_price))}</td>
+                          <td className="px-3 py-2 text-right font-semibold tabular-nums">{money(Number(it.line_total))}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {(header.reason || header.notes) && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {header.reason && (
+                      <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                        <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Reason</div>
+                        <div className="mt-1">{header.reason}</div>
+                      </div>
+                    )}
+                    {header.notes && (
+                      <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                        <div className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Notes</div>
+                        <div className="mt-1 whitespace-pre-wrap">{header.notes}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* audit timeline */}
+                <div className="rounded-lg border">
+                  <div className="border-b bg-muted/40 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    History
+                  </div>
+                  <ol className="relative space-y-4 p-4 pl-8">
+                    <span className="absolute left-4 top-4 bottom-4 w-px bg-border" aria-hidden />
+                    <TimelineItem
+                      icon={<CheckCircle2 className="h-3.5 w-3.5" />}
+                      color="bg-emerald-500"
+                      title="Return created"
+                      subtitle={`by ${short(header.created_by)} · stock restored`}
+                      time={header.created_at}
+                    />
+                    {voided ? (
+                      <TimelineItem
+                        icon={<Ban className="h-3.5 w-3.5" />}
+                        color="bg-amber-500"
+                        title="Return voided"
+                        subtitle={header.void_reason
+                          ? `by ${short(header.voided_by)} · reason: ${header.void_reason}`
+                          : `by ${short(header.voided_by)}`}
+                        time={header.voided_at ?? header.updated_at}
+                      />
+                    ) : (
+                      <TimelineItem
+                        icon={<Clock className="h-3.5 w-3.5" />}
+                        color="bg-muted-foreground/60"
+                        title="Active"
+                        subtitle="Awaiting further action"
+                        time={header.updated_at}
+                      />
+                    )}
+                  </ol>
+                </div>
+              </div>
+
+              {/* summary */}
+              <aside className="space-y-3">
+                <div className="rounded-lg border bg-card p-4 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="tabular-nums">{money(Number(header.subtotal))}</span></div>
+                  <div className="mt-2 flex justify-between border-t pt-2 text-base font-bold">
+                    <span>Total refund</span>
+                    <span className="tabular-nums text-primary">{money(Number(header.total))}</span>
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-muted/20 p-3 text-xs">
+                  <div className="font-semibold text-foreground">Order</div>
+                  <div className="mt-0.5 font-mono text-muted-foreground">
+                    {header.order_id ? `INV-${String(header.order_id).slice(0, 8).toUpperCase()}` : "Manual entry"}
+                  </div>
+                </div>
+              </aside>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function TimelineItem({ icon, color, title, subtitle, time }: {
+  icon: React.ReactNode; color: string; title: string; subtitle?: string; time?: string;
+}) {
+  return (
+    <li className="relative">
+      <span className={`absolute -left-[18px] top-0.5 grid h-6 w-6 place-items-center rounded-full text-white shadow ${color}`}>
+        {icon}
+      </span>
+      <div className="text-sm font-semibold">{title}</div>
+      {subtitle && <div className="text-xs text-muted-foreground">{subtitle}</div>}
+      {time && <div className="mt-0.5 text-[11px] font-mono text-muted-foreground">{fmtDT(time)}</div>}
+    </li>
+  );
+}
+
+function short(uid?: string | null) {
+  if (!uid) return "system";
+  return uid.slice(0, 8);
 }
 
 function StatusPill({ status }: { status: string }) {

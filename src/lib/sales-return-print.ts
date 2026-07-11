@@ -83,9 +83,10 @@ export function printSalesReturnReceipt(r: ReturnReceipt) {
       <div class="grid">
         <div><div class="k">Return date</div><div class="v">${esc(r.return_date)}</div></div>
         <div><div class="k">Customer</div><div class="v">${esc(r.customer || "Walk-in")}</div></div>
-        <div><div class="k">Items</div><div class="v">${r.items.length}</div></div>
+        <div><div class="k">Processed by</div><div class="v">${esc(r.staff || "System")}</div></div>
         <div><div class="k">Total refund</div><div class="v">৳${r.total.toFixed(2)}</div></div>
       </div>
+      ${voided && r.voided_by_name ? `<div class="notes"><div class="k">Voided by</div><div>${esc(r.voided_by_name)}${r.voided_at ? " · " + new Date(r.voided_at).toLocaleString() : ""}</div></div>` : ""}
 
       <h2>Items returned</h2>
       <table>

@@ -42,6 +42,7 @@ const REASON_OPTIONS = [
 
 function NewReturnPage() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const listFn = useServerFn(listSalesForReturn);
   const getFn = useServerFn(getSaleForReturn);
   const createFn = useServerFn(createSalesReturn);

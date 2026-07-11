@@ -425,26 +425,26 @@ function ReturnDetailModal({
 
   return (
     <Dialog open={!!id} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-0 sm:rounded-2xl">
+      <DialogContent className="max-w-3xl gap-0 p-0 sm:rounded-2xl w-[calc(100vw-1rem)] max-h-[calc(100dvh-1rem)] sm:max-h-[92vh] flex flex-col overflow-hidden [&>button]:top-3 [&>button]:right-3 [&>button]:z-20 [&>button]:h-8 [&>button]:w-8 [&>button]:rounded-full [&>button]:bg-background/80 [&>button]:backdrop-blur [&>button]:shadow-sm [&>button]:border">
         <DialogHeader className="sr-only"><DialogTitle>Sales return details</DialogTitle></DialogHeader>
         {isLoading || !header ? (
           <div className="p-8"><div className="h-40 animate-pulse rounded bg-muted" /></div>
         ) : (
-          <div>
-            {/* header */}
-            <div className={`border-b p-5 pr-12 ${voided ? "bg-muted/30" : "bg-gradient-to-br from-primary/5 to-transparent"}`}>
+          <div className="flex flex-1 min-h-0 flex-col">
+            {/* Sticky header */}
+            <div className={`sticky top-0 z-10 border-b px-4 py-4 pr-14 sm:px-5 ${voided ? "bg-muted/60 backdrop-blur" : "bg-gradient-to-br from-primary/10 via-background to-background backdrop-blur"}`}>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
                   {header.reference}
                 </span>
                 <StatusPill status={header.status ?? "completed"} />
               </div>
-              <h2 className="mt-2 truncate text-xl font-bold">{header.customer || "Walk-in customer"}</h2>
+              <h2 className="mt-2 truncate text-lg font-bold sm:text-xl">{header.customer || "Walk-in customer"}</h2>
               <p className="text-xs text-muted-foreground">
                 Return date · {fmtDate(header.return_date)} · Processed by{" "}
                 <span className="font-semibold text-foreground">{header.creator_name ?? "System"}</span>
               </p>
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={handlePrint}>
                   <Printer className="mr-1 h-4 w-4" />Print
                 </Button>
@@ -460,7 +460,9 @@ function ReturnDetailModal({
               </div>
             </div>
 
-            <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_16rem]">
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto overscroll-contain">
+            <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_16rem]">
               <div className="space-y-5">
                 {/* items */}
                 <div className="overflow-hidden rounded-lg border">
@@ -562,6 +564,7 @@ function ReturnDetailModal({
                   </div>
                 </div>
               </aside>
+            </div>
             </div>
           </div>
         )}

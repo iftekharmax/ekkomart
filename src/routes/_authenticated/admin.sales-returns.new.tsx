@@ -110,10 +110,19 @@ function NewReturnPage() {
     [items],
   );
 
+  // Prorate the original sale's discount/tax against the returned portion.
+  const saleSub = Number(saleDetail?.subtotal) || 0;
+  const saleDiscount = Number(saleDetail?.discount) || 0;
+  const saleTax = Number(saleDetail?.tax) || 0;
+  const ratio = saleSub > 0 ? Math.min(1, subtotal / saleSub) : 0;
+  const discount = +(saleDiscount * ratio).toFixed(2);
+  const tax = +(saleTax * ratio).toFixed(2);
+  const totalRefund = Math.max(0, subtotal - discount + tax);
+
   const resolvedReason = reasonType === "Other" ? reasonOther.trim() : reasonType;
 
   const create = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const returnItems = items
         .filter((i) => i.quantity > 0)
         .map((i) => ({
@@ -121,6 +130,7 @@ function NewReturnPage() {
           variation_id: i.variation_id,
           quantity: i.quantity,
           unit_price: i.unit_price,
+          label: i.label,
         }));
       const nextErrors: { reason?: string; items?: string } = {};
       if (!reasonType) nextErrors.reason = "Please select a return reason";
@@ -132,7 +142,7 @@ function NewReturnPage() {
         toast.error(nextErrors.reason ?? nextErrors.items!);
         throw new Error(nextErrors.reason ?? nextErrors.items!);
       }
-      return createFn({
+      await createFn({
         data: {
           order_id: orderId || null,
           customer: customer.trim() || null,
@@ -140,12 +150,19 @@ function NewReturnPage() {
           reference: null,
           reason: resolvedReason,
           notes: null,
-          items: returnItems,
+          items: returnItems.map(({ label: _l, ...rest }) => rest),
         },
       });
+      return returnItems;
     },
-    onSuccess: () => {
-      toast.success("Sales return created — stock restored");
+    onSuccess: (returnItems) => {
+      const summary = returnItems
+        .map((i) => `${i.label} × ${i.quantity}`)
+        .join(", ");
+      toast.success("Sales return created — stock restored", {
+        description: `Restocked: ${summary}`,
+        duration: 6000,
+      });
       qc.invalidateQueries({ queryKey: ["admin-sales-returns"] });
       qc.invalidateQueries({ queryKey: ["admin-products"] });
       qc.invalidateQueries({ queryKey: ["products"] });
@@ -440,12 +457,31 @@ function NewReturnPage() {
         <div className="rounded-xl border bg-card p-4 h-fit sticky top-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Subtotal</span>
-            <span className="font-semibold">৳{subtotal.toFixed(2)}</span>
+            <span className="font-semibold tabular-nums">৳{subtotal.toFixed(2)}</span>
           </div>
-          <div className="mt-1 flex items-center justify-between border-t pt-2 text-base">
+          {saleDiscount > 0 && (
+            <div className="mt-1 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Discount <span className="text-[10px] uppercase">(prorated)</span></span>
+              <span className="font-semibold tabular-nums text-rose-600">−৳{discount.toFixed(2)}</span>
+            </div>
+          )}
+          {saleTax > 0 && (
+            <div className="mt-1 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Tax <span className="text-[10px] uppercase">(prorated)</span></span>
+              <span className="font-semibold tabular-nums">৳{tax.toFixed(2)}</span>
+            </div>
+          )}
+          <div className="mt-2 flex items-center justify-between border-t pt-2 text-base">
             <span className="font-semibold">Total refund</span>
-            <span className="font-bold text-primary">৳{subtotal.toFixed(2)}</span>
+            <span className="font-bold tabular-nums text-primary">৳{totalRefund.toFixed(2)}</span>
           </div>
+          {(saleDiscount > 0 || saleTax > 0) && (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Original sale had {saleDiscount > 0 ? `discount ৳${saleDiscount.toFixed(2)}` : ""}
+              {saleDiscount > 0 && saleTax > 0 ? " · " : ""}
+              {saleTax > 0 ? `tax ৳${saleTax.toFixed(2)}` : ""} — applied proportionally.
+            </p>
+          )}
           {errors.items && <p className="mt-2 text-xs font-medium text-rose-600">{errors.items}</p>}
           <Button className="mt-4 w-full" disabled={create.isPending} onClick={() => create.mutate()}>
             {create.isPending ? "Saving..." : "Create return"}

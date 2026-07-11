@@ -91,14 +91,19 @@ function NewReturnPage() {
           quantity: i.quantity,
           unit_price: i.unit_price,
         }));
-      if (returnItems.length === 0) throw new Error("Add at least one item with quantity > 0");
+      const nextErrors: { reason?: string; items?: string } = {};
+      if (reason.trim().length < 3) nextErrors.reason = "Reason is required (min 3 characters)";
+      if (returnItems.length === 0) nextErrors.items = "Add at least one item with quantity > 0";
+      setErrors(nextErrors);
+      if (Object.keys(nextErrors).length) throw new Error(nextErrors.reason ?? nextErrors.items!);
       return createFn({
         data: {
           order_id: orderId || null,
           customer: customer.trim() || null,
           return_date: date,
           reference: reference.trim() || null,
-          reason: reason.trim() || null,
+          reason: reason.trim(),
+          notes: notes.trim() || null,
           items: returnItems,
         },
       });

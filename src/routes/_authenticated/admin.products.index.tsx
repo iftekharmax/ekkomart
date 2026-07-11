@@ -101,7 +101,7 @@ function ProductsListPage() {
         case "price": return (Number(a.price) - Number(b.price)) * dir;
         case "status": {
           const order = { out: 0, low: 1, in: 2 } as const;
-          return (order[a._status] - order[b._status]) * dir;
+          return (order[a._status as keyof typeof order] - order[b._status as keyof typeof order]) * dir;
         }
       }
     });

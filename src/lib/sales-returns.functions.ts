@@ -23,7 +23,8 @@ const returnInput = z.object({
   customer: z.string().nullable().optional(),
   return_date: z.string().optional(),
   reference: z.string().trim().max(100).nullable().optional(),
-  reason: z.string().nullable().optional(),
+  reason: z.string().trim().min(3, "Reason is required").max(500),
+  notes: z.string().trim().max(1000).nullable().optional(),
   items: z.array(itemInput).min(1),
 });
 

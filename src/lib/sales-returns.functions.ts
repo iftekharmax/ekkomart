@@ -117,7 +117,7 @@ export const getSaleForReturn = createServerFn({ method: "GET" })
     await assertAdmin(context);
     const { data: o, error } = await context.supabase
       .from("orders")
-      .select("id,note,created_at, order_items(id,product_id,variation_id,name,price,qty)")
+      .select("id,note,total,created_at, order_items(id,product_id,variation_id,name,price,qty)")
       .eq("id", data.id).maybeSingle();
     if (error) throw new Error(error.message);
     if (!o) throw new Error("Sale not found");
@@ -127,6 +127,10 @@ export const getSaleForReturn = createServerFn({ method: "GET" })
       id: (o as any).id as string,
       invoice: `INV-${String((o as any).id).slice(0, 8).toUpperCase()}`,
       customer: (meta.customer as string) ?? null,
+      subtotal: Number(meta.subtotal) || 0,
+      discount: Number(meta.discount) || 0,
+      tax: Number(meta.tax) || 0,
+      total: Number((o as any).total) || 0,
       items: ((o as any).order_items ?? []).map((it: any) => ({
         id: it.id,
         product_id: it.product_id,

@@ -457,12 +457,31 @@ function NewReturnPage() {
         <div className="rounded-xl border bg-card p-4 h-fit sticky top-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Subtotal</span>
-            <span className="font-semibold">৳{subtotal.toFixed(2)}</span>
+            <span className="font-semibold tabular-nums">৳{subtotal.toFixed(2)}</span>
           </div>
-          <div className="mt-1 flex items-center justify-between border-t pt-2 text-base">
+          {saleDiscount > 0 && (
+            <div className="mt-1 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Discount <span className="text-[10px] uppercase">(prorated)</span></span>
+              <span className="font-semibold tabular-nums text-rose-600">−৳{discount.toFixed(2)}</span>
+            </div>
+          )}
+          {saleTax > 0 && (
+            <div className="mt-1 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Tax <span className="text-[10px] uppercase">(prorated)</span></span>
+              <span className="font-semibold tabular-nums">৳{tax.toFixed(2)}</span>
+            </div>
+          )}
+          <div className="mt-2 flex items-center justify-between border-t pt-2 text-base">
             <span className="font-semibold">Total refund</span>
-            <span className="font-bold text-primary">৳{subtotal.toFixed(2)}</span>
+            <span className="font-bold tabular-nums text-primary">৳{totalRefund.toFixed(2)}</span>
           </div>
+          {(saleDiscount > 0 || saleTax > 0) && (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Original sale had {saleDiscount > 0 ? `discount ৳${saleDiscount.toFixed(2)}` : ""}
+              {saleDiscount > 0 && saleTax > 0 ? " · " : ""}
+              {saleTax > 0 ? `tax ৳${saleTax.toFixed(2)}` : ""} — applied proportionally.
+            </p>
+          )}
           {errors.items && <p className="mt-2 text-xs font-medium text-rose-600">{errors.items}</p>}
           <Button className="mt-4 w-full" disabled={create.isPending} onClick={() => create.mutate()}>
             {create.isPending ? "Saving..." : "Create return"}

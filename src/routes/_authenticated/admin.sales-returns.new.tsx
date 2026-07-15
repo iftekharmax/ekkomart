@@ -157,21 +157,28 @@ function NewReturnPage() {
     },
     onSuccess: (returnItems) => {
       const totalQty = returnItems.reduce((s, i) => s + i.quantity, 0);
-      toast.success(
-        `Sales return created — ${returnItems.length} item${returnItems.length > 1 ? "s" : ""} restocked (${totalQty} unit${totalQty > 1 ? "s" : ""})`,
-        {
+      const title = `Sales return created — ${returnItems.length} item${returnItems.length > 1 ? "s" : ""} restocked (${totalQty} unit${totalQty > 1 ? "s" : ""})`;
+      const showDetails = () => {
+        toast(`Restocked items (${returnItems.length})`, {
           description: (
             <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs">
               {returnItems.map((i, idx) => (
                 <li key={idx}>
-                  <span className="font-medium">{i.label}</span> — <span className="tabular-nums">×{i.quantity}</span> restocked
+                  <span className="font-medium">{i.label}</span> — <span className="tabular-nums">×{i.quantity}</span> @ ৳{i.unit_price.toFixed(2)}
                 </li>
               ))}
             </ul>
           ) as any,
-          duration: 8000,
-        },
-      );
+          duration: 15000,
+          closeButton: true,
+        });
+      };
+      toast.success(title, {
+        description: `${returnItems.slice(0, 2).map((i) => `${i.label} ×${i.quantity}`).join(", ")}${returnItems.length > 2 ? `, +${returnItems.length - 2} more` : ""}`,
+        duration: 8000,
+        action: { label: "View details", onClick: showDetails },
+      });
+
       qc.invalidateQueries({ queryKey: ["admin-sales-returns"] });
       qc.invalidateQueries({ queryKey: ["admin-products"] });
       qc.invalidateQueries({ queryKey: ["products"] });

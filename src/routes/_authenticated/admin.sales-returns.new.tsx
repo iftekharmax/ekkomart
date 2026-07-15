@@ -156,13 +156,22 @@ function NewReturnPage() {
       return returnItems;
     },
     onSuccess: (returnItems) => {
-      const summary = returnItems
-        .map((i) => `${i.label} × ${i.quantity}`)
-        .join(", ");
-      toast.success("Sales return created — stock restored", {
-        description: `Restocked: ${summary}`,
-        duration: 6000,
-      });
+      const totalQty = returnItems.reduce((s, i) => s + i.quantity, 0);
+      toast.success(
+        `Sales return created — ${returnItems.length} item${returnItems.length > 1 ? "s" : ""} restocked (${totalQty} unit${totalQty > 1 ? "s" : ""})`,
+        {
+          description: (
+            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs">
+              {returnItems.map((i, idx) => (
+                <li key={idx}>
+                  <span className="font-medium">{i.label}</span> — <span className="tabular-nums">×{i.quantity}</span> restocked
+                </li>
+              ))}
+            </ul>
+          ) as any,
+          duration: 8000,
+        },
+      );
       qc.invalidateQueries({ queryKey: ["admin-sales-returns"] });
       qc.invalidateQueries({ queryKey: ["admin-products"] });
       qc.invalidateQueries({ queryKey: ["products"] });

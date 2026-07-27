@@ -192,6 +192,7 @@ function NewReturnPage() {
   };
 
   return (
+    <>
     <div className="mx-auto max-w-4xl">
       {/* Hero header */}
       <div className="mb-5">

@@ -10,8 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Trash2, Search, User, Receipt, Loader2, Undo2, CheckCircle2, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { ArrowLeft, Trash2, Search, User, Receipt, Loader2, Undo2, CheckCircle2, X, PackageCheck } from "lucide-react";
 import { toast } from "sonner";
+
+type RestockedLine = { label: string; quantity: number; unit_price: number };
 
 export const Route = createFileRoute("/_authenticated/admin/sales-returns/new")({
   head: () => ({ meta: [{ title: "New Sales Return — Admin" }] }),
@@ -62,6 +65,7 @@ function NewReturnPage() {
   const [customer, setCustomer] = useState("");
   const [items, setItems] = useState<Line[]>([]);
   const [errors, setErrors] = useState<{ reason?: string; items?: string }>({});
+  const [restockedModal, setRestockedModal] = useState<RestockedLine[] | null>(null);
   const suggestRef = useRef<HTMLDivElement | null>(null);
 
   const suggestions = useMemo(() => {
@@ -158,31 +162,19 @@ function NewReturnPage() {
     onSuccess: (returnItems) => {
       const totalQty = returnItems.reduce((s, i) => s + i.quantity, 0);
       const title = `Sales return created — ${returnItems.length} item${returnItems.length > 1 ? "s" : ""} restocked (${totalQty} unit${totalQty > 1 ? "s" : ""})`;
-      const showDetails = () => {
-        toast(`Restocked items (${returnItems.length})`, {
-          description: (
-            <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs">
-              {returnItems.map((i, idx) => (
-                <li key={idx}>
-                  <span className="font-medium">{i.label}</span> — <span className="tabular-nums">×{i.quantity}</span> @ ৳{i.unit_price.toFixed(2)}
-                </li>
-              ))}
-            </ul>
-          ) as any,
-          duration: 15000,
-          closeButton: true,
-        });
-      };
+      const lines: RestockedLine[] = returnItems.map((i) => ({
+        label: i.label, quantity: i.quantity, unit_price: i.unit_price,
+      }));
       toast.success(title, {
         description: `${returnItems.slice(0, 2).map((i) => `${i.label} ×${i.quantity}`).join(", ")}${returnItems.length > 2 ? `, +${returnItems.length - 2} more` : ""}`,
         duration: 8000,
-        action: { label: "View details", onClick: showDetails },
+        action: { label: "View details", onClick: () => setRestockedModal(lines) },
       });
 
       qc.invalidateQueries({ queryKey: ["admin-sales-returns"] });
       qc.invalidateQueries({ queryKey: ["admin-products"] });
       qc.invalidateQueries({ queryKey: ["products"] });
-      navigate({ to: "/admin/sales-returns" });
+      setRestockedModal(lines);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -200,6 +192,7 @@ function NewReturnPage() {
   };
 
   return (
+    <>
     <div className="mx-auto max-w-4xl">
       {/* Hero header */}
       <div className="mb-5">
@@ -505,5 +498,76 @@ function NewReturnPage() {
         </div>
       </div>
     </div>
+
+    <Dialog
+      open={!!restockedModal}
+      onOpenChange={(o) => {
+        if (!o) {
+          setRestockedModal(null);
+          navigate({ to: "/admin/sales-returns" });
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+              <PackageCheck className="h-4 w-4" />
+            </span>
+            Restocked items
+          </DialogTitle>
+          <DialogDescription>
+            {restockedModal?.length ?? 0} item{(restockedModal?.length ?? 0) > 1 ? "s" : ""} returned to inventory.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-muted/60 text-left">
+              <tr>
+                <th className="px-3 py-2 font-semibold">Product</th>
+                <th className="px-3 py-2 text-right font-semibold">Qty</th>
+                <th className="px-3 py-2 text-right font-semibold">Unit price</th>
+                <th className="px-3 py-2 text-right font-semibold">Line total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {restockedModal?.map((r, i) => (
+                <tr key={i} className="border-t">
+                  <td className="px-3 py-2">{r.label}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">×{r.quantity}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">৳{r.unit_price.toFixed(2)}</td>
+                  <td className="px-3 py-2 text-right font-semibold tabular-nums">৳{(r.quantity * r.unit_price).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+            {restockedModal && restockedModal.length > 0 && (
+              <tfoot className="border-t bg-muted/30">
+                <tr>
+                  <td className="px-3 py-2 font-semibold" colSpan={1}>Total</td>
+                  <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                    ×{restockedModal.reduce((s, r) => s + r.quantity, 0)}
+                  </td>
+                  <td />
+                  <td className="px-3 py-2 text-right font-bold tabular-nums text-primary">
+                    ৳{restockedModal.reduce((s, r) => s + r.quantity * r.unit_price, 0).toFixed(2)}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={() => {
+              setRestockedModal(null);
+              navigate({ to: "/admin/sales-returns" });
+            }}
+          >
+            Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

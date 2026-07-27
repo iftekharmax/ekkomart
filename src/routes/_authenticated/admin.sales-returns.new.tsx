@@ -497,5 +497,76 @@ function NewReturnPage() {
         </div>
       </div>
     </div>
+
+    <Dialog
+      open={!!restockedModal}
+      onOpenChange={(o) => {
+        if (!o) {
+          setRestockedModal(null);
+          navigate({ to: "/admin/sales-returns" });
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+              <PackageCheck className="h-4 w-4" />
+            </span>
+            Restocked items
+          </DialogTitle>
+          <DialogDescription>
+            {restockedModal?.length ?? 0} item{(restockedModal?.length ?? 0) > 1 ? "s" : ""} returned to inventory.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-auto rounded-lg border">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-muted/60 text-left">
+              <tr>
+                <th className="px-3 py-2 font-semibold">Product</th>
+                <th className="px-3 py-2 text-right font-semibold">Qty</th>
+                <th className="px-3 py-2 text-right font-semibold">Unit price</th>
+                <th className="px-3 py-2 text-right font-semibold">Line total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {restockedModal?.map((r, i) => (
+                <tr key={i} className="border-t">
+                  <td className="px-3 py-2">{r.label}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">×{r.quantity}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">৳{r.unit_price.toFixed(2)}</td>
+                  <td className="px-3 py-2 text-right font-semibold tabular-nums">৳{(r.quantity * r.unit_price).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+            {restockedModal && restockedModal.length > 0 && (
+              <tfoot className="border-t bg-muted/30">
+                <tr>
+                  <td className="px-3 py-2 font-semibold" colSpan={1}>Total</td>
+                  <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                    ×{restockedModal.reduce((s, r) => s + r.quantity, 0)}
+                  </td>
+                  <td />
+                  <td className="px-3 py-2 text-right font-bold tabular-nums text-primary">
+                    ৳{restockedModal.reduce((s, r) => s + r.quantity * r.unit_price, 0).toFixed(2)}
+                  </td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+        <DialogFooter>
+          <Button
+            onClick={() => {
+              setRestockedModal(null);
+              navigate({ to: "/admin/sales-returns" });
+            }}
+          >
+            Done
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

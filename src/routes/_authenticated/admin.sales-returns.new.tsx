@@ -65,6 +65,7 @@ function NewReturnPage() {
   const [customer, setCustomer] = useState("");
   const [items, setItems] = useState<Line[]>([]);
   const [errors, setErrors] = useState<{ reason?: string; items?: string }>({});
+  const [restockedModal, setRestockedModal] = useState<RestockedLine[] | null>(null);
   const suggestRef = useRef<HTMLDivElement | null>(null);
 
   const suggestions = useMemo(() => {

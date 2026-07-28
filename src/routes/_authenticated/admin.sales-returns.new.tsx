@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Trash2, Search, User, Receipt, Loader2, Undo2, CheckCircle2, X, PackageCheck } from "lucide-react";
+import { ArrowLeft, Trash2, Search, User, Receipt, Loader2, Undo2, CheckCircle2, X, PackageCheck, PackageOpen } from "lucide-react";
 import { toast } from "sonner";
 
 type RestockedLine = { label: string; quantity: number; unit_price: number };

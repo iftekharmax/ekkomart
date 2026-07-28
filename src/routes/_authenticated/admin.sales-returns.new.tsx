@@ -66,6 +66,15 @@ function NewReturnPage() {
   const [items, setItems] = useState<Line[]>([]);
   const [errors, setErrors] = useState<{ reason?: string; items?: string }>({});
   const [restockedModal, setRestockedModal] = useState<RestockedLine[] | null>(null);
+  const [restockLoading, setRestockLoading] = useState(false);
+  const openRestockModal = (lines: RestockedLine[]) => {
+    setRestockLoading(true);
+    setRestockedModal([]);
+    setTimeout(() => {
+      setRestockedModal(lines);
+      setRestockLoading(false);
+    }, 400);
+  };
   const suggestRef = useRef<HTMLDivElement | null>(null);
 
   const suggestions = useMemo(() => {

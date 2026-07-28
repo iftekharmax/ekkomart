@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Trash2, Search, User, Receipt, Loader2, Undo2, CheckCircle2, X, PackageCheck } from "lucide-react";
+import { ArrowLeft, Trash2, Search, User, Receipt, Loader2, Undo2, CheckCircle2, X, PackageCheck, PackageOpen } from "lucide-react";
 import { toast } from "sonner";
 
 type RestockedLine = { label: string; quantity: number; unit_price: number };
@@ -520,42 +520,51 @@ function NewReturnPage() {
             {restockedModal?.length ?? 0} item{(restockedModal?.length ?? 0) > 1 ? "s" : ""} returned to inventory.
           </DialogDescription>
         </DialogHeader>
-        <div className="max-h-[60vh] overflow-auto rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-muted/60 text-left">
-              <tr>
-                <th className="px-3 py-2 font-semibold">Product</th>
-                <th className="px-3 py-2 text-right font-semibold">Qty</th>
-                <th className="px-3 py-2 text-right font-semibold">Unit price</th>
-                <th className="px-3 py-2 text-right font-semibold">Line total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {restockedModal?.map((r, i) => (
-                <tr key={i} className="border-t">
-                  <td className="px-3 py-2">{r.label}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">×{r.quantity}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">৳{r.unit_price.toFixed(2)}</td>
-                  <td className="px-3 py-2 text-right font-semibold tabular-nums">৳{(r.quantity * r.unit_price).toFixed(2)}</td>
+        {restockedModal && restockedModal.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed py-10 text-center">
+            <div className="grid h-10 w-10 place-items-center rounded-full bg-muted text-muted-foreground">
+              <PackageOpen className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-medium">No restocked line items to view</p>
+            <p className="text-xs text-muted-foreground">Nothing was returned to inventory for this sales return.</p>
+          </div>
+        ) : (
+          <div className="max-h-[60vh] overflow-auto rounded-lg border">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-muted/60 text-left">
+                <tr>
+                  <th className="px-3 py-2 font-semibold">Product</th>
+                  <th className="px-3 py-2 text-right font-semibold">Qty</th>
+                  <th className="px-3 py-2 text-right font-semibold">Unit price</th>
+                  <th className="px-3 py-2 text-right font-semibold">Line total</th>
                 </tr>
-              ))}
-            </tbody>
-            {restockedModal && restockedModal.length > 0 && (
+              </thead>
+              <tbody>
+                {restockedModal?.map((r, i) => (
+                  <tr key={i} className="border-t">
+                    <td className="px-3 py-2">{r.label}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">×{r.quantity}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">৳{r.unit_price.toFixed(2)}</td>
+                    <td className="px-3 py-2 text-right font-semibold tabular-nums">৳{(r.quantity * r.unit_price).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
               <tfoot className="border-t bg-muted/30">
                 <tr>
                   <td className="px-3 py-2 font-semibold" colSpan={1}>Total</td>
                   <td className="px-3 py-2 text-right font-semibold tabular-nums">
-                    ×{restockedModal.reduce((s, r) => s + r.quantity, 0)}
+                    ×{restockedModal!.reduce((s, r) => s + r.quantity, 0)}
                   </td>
                   <td />
                   <td className="px-3 py-2 text-right font-bold tabular-nums text-primary">
-                    ৳{restockedModal.reduce((s, r) => s + r.quantity * r.unit_price, 0).toFixed(2)}
+                    ৳{restockedModal!.reduce((s, r) => s + r.quantity * r.unit_price, 0).toFixed(2)}
                   </td>
                 </tr>
               </tfoot>
-            )}
-          </table>
-        </div>
+            </table>
+          </div>
+        )}
+
         <DialogFooter className="gap-2 sm:gap-2">
           <Button
             variant="outline"

@@ -556,10 +556,20 @@ function NewReturnPage() {
             )}
           </table>
         </div>
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setRestockedModal(null);
+              create.reset();
+            }}
+          >
+            Confirm
+          </Button>
           <Button
             onClick={() => {
               setRestockedModal(null);
+              create.reset();
               navigate({ to: "/admin/sales-returns" });
             }}
           >
